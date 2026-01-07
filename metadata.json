@@ -1,0 +1,8 @@
+{
+  "name": "IVAC Youth Union Manager",
+  "description": "A comprehensive mobile application for managing Youth Union activities, attendance, member profiles, and analytics for IVAC. Includes AI assistant integration for automated reporting and planning.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
