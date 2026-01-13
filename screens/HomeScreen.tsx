@@ -11,9 +11,10 @@ interface HomeScreenProps {
   settings: { notifEnabled: boolean };
   systemNotifications: SystemNotification[];
   onNavigate: (screen: Screen, targetId?: string) => void;
+  onClearNotifs?: () => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ currentUser, members, news, activities = [], docs = [], settings, systemNotifications, onNavigate }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ currentUser, members, news, activities = [], docs = [], settings, systemNotifications, onNavigate, onClearNotifs }) => {
   const [viewingSystemNotif, setViewingSystemNotif] = useState<SystemNotification | null>(null);
 
   const apps = [
@@ -33,13 +34,23 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ currentUser, members, news, act
       .slice(0, 5);
   }, [news]);
 
+  const birthdayMembers = useMemo(() => {
+    const currentMonth = new Date().getMonth() + 1;
+    return members.filter(m => {
+      if (!m.dob) return false;
+      const birthMonth = parseInt(m.dob.split('-')[1]);
+      return birthMonth === currentMonth;
+    });
+  }, [members]);
+
   const notifications = useMemo(() => {
     if (!settings.notifEnabled) return [];
     
-    const list: any[] = [];
+    let list: any[] = [];
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
+    // 1. Thông báo hệ thống gửi riêng (Personal reminders)
     if (currentUser) {
       const personalNotifs = systemNotifications.filter(n => n.targetMemberId === currentUser.id);
       personalNotifs.forEach(pn => {
@@ -49,11 +60,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ currentUser, members, news, act
           desc: pn.message,
           icon: pn.type === 'warning' ? 'error' : pn.type === 'encouragement' ? 'military_tech' : 'assignment_late',
           color: pn.type === 'warning' ? 'text-rose-500 bg-rose-500/10' : pn.type === 'encouragement' ? 'text-amber-500 bg-amber-500/10' : 'text-blue-500 bg-blue-500/10',
-          action: () => setViewingSystemNotif(pn)
+          timestamp: new Date(pn.timestamp).getTime(),
+          action: () => setViewingSystemNotif(pn) 
         });
       });
     }
 
+    // 2. Hoạt động đang diễn ra (Điểm danh)
     const activeActs = activities.filter(a => {
       if (a.date !== todayStr) return false;
       const endDateTime = new Date(`${a.date}T${a.endTime}`).getTime();
@@ -63,19 +76,39 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ currentUser, members, news, act
       list.push({
         id: `active-${act.id}`,
         title: 'Hoạt động đang diễn ra',
-        desc: `"${act.name}" đang mở cổng điểm danh.`,
+        desc: `"${act.name}" đang mở cổng điểm danh. Đồng chí đã tham gia chưa?`,
         icon: 'qr_code_scanner',
         color: 'text-purple-600 dark:text-purple-400 bg-purple-500/10 dark:bg-purple-400/10',
+        timestamp: now.getTime(),
         action: () => onNavigate(Screen.ATTENDANCE)
       });
     });
 
-    return list;
+    // 3. Hoạt động mới
+    const recentActs = activities.filter(act => {
+      const actDate = new Date(act.date).getTime();
+      const diff = actDate - now.getTime();
+      return diff > 0 && diff < 3 * 24 * 60 * 60 * 1000;
+    });
+    recentActs.forEach(act => {
+      list.push({
+        id: `new-act-${act.id}`,
+        title: 'Hoạt động sắp tới',
+        desc: `"${act.name}" diễn ra vào ${new Date(act.date).toLocaleDateString('vi-VN')}. Hãy đăng ký ngay!`,
+        icon: 'event_note',
+        color: 'text-orange-600 dark:text-orange-400 bg-orange-500/10 dark:bg-orange-400/10',
+        timestamp: new Date(act.date).getTime(),
+        action: () => onNavigate(Screen.ACTIVITY_REG)
+      });
+    });
+
+    // Sắp xếp mới nhất lên đầu và chỉ lấy 10 mục
+    return list.sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
   }, [activities, systemNotifications, currentUser, settings.notifEnabled, onNavigate]);
 
   return (
-    <div className="flex flex-col pb-32 bg-background-light dark:bg-background-dark transition-colors duration-300">
-      <header className="px-6 py-6 flex items-center justify-between sticky top-0 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md z-30">
+    <div className="flex flex-col pb-32">
+      <header className="px-6 py-6 flex items-center justify-between sticky top-0 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md z-30 transition-colors duration-300">
         <div className="flex items-center gap-3">
           <div className="h-10 w-16 bg-white rounded-xl shadow-lg flex items-center justify-center p-1 border border-primary/10">
             <div className="border-2 border-primary rounded-lg w-full h-full flex items-center justify-center">
@@ -116,12 +149,67 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ currentUser, members, news, act
         </div>
       </div>
 
+      {/* News Slider */}
+      <div className="space-y-4 mb-8">
+        <div className="px-6 flex items-center justify-between">
+          <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-[0.2em]">Tin tức mới nhất</h2>
+          <button onClick={() => onNavigate(Screen.NEWS)} className="text-[10px] font-black text-primary uppercase">Xem tất cả</button>
+        </div>
+        <div className="flex overflow-x-auto no-scrollbar gap-4 px-6 pb-2">
+          {topFiveNews.map((item, idx) => (
+            <div 
+              key={item.id} 
+              className="relative min-w-[280px] h-48 rounded-[2.5rem] overflow-hidden shadow-xl group cursor-pointer border border-gray-100 dark:border-white/5 shrink-0"
+              onClick={() => onNavigate(Screen.NEWS)}
+            >
+              <img src={item.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="News" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+              <div className="absolute bottom-0 left-0 p-5 w-full">
+                <span className="px-2 py-0.5 bg-primary/90 text-[8px] font-black text-white rounded-full uppercase mb-1.5 inline-block backdrop-blur-sm">{item.category}</span>
+                <h3 className="text-sm font-black text-white mb-0.5 line-clamp-2 leading-tight">{item.title}</h3>
+                <p className="text-gray-300 text-[9px] font-medium line-clamp-1 opacity-80">{item.author} • {new Date(item.date).toLocaleDateString('vi-VN')}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {birthdayMembers.length > 0 && (
+        <div className="px-6 mb-10">
+          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-[#1a3a2a] dark:to-[#0f231a] rounded-[2.5rem] p-6 border border-primary/10 dark:border-primary/20 shadow-xl relative overflow-hidden transition-colors duration-300">
+             <div className="relative z-10">
+               <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-2">
+                    <span className="material-symbols-outlined text-sm">cake</span>
+                    Sinh nhật tháng {new Date().getMonth() + 1}
+                  </h3>
+                  <span className="text-[10px] text-gray-500 font-bold">{birthdayMembers.length} đồng chí</span>
+               </div>
+               <div className="flex gap-4 overflow-x-auto no-scrollbar py-2">
+                 {birthdayMembers.map(member => (
+                   <div key={member.id} className="flex flex-col items-center gap-2 shrink-0 group">
+                      <div className="size-16 rounded-2xl border-2 border-primary/20 dark:border-primary/30 p-1 group-hover:border-primary transition-all bg-white dark:bg-surface-dark">
+                         <img src={member.avatar || "https://picsum.photos/100/100"} alt={member.name} className="size-full object-cover rounded-xl" />
+                      </div>
+                      <p className="text-[10px] font-black text-gray-800 dark:text-white text-center leading-tight max-w-[70px]">{member.name.split(' ').pop()}</p>
+                   </div>
+                 ))}
+               </div>
+             </div>
+          </div>
+        </div>
+      )}
+
+      <div className="px-6 mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-[0.2em]">Hệ sinh thái Số</h2>
+      </div>
+
       <div className="grid grid-cols-2 gap-4 px-6 mb-10">
         {apps.map((app, idx) => (
           <button
             key={idx}
             onClick={() => onNavigate(app.screen)}
-            className="flex flex-col items-start justify-between h-36 p-5 rounded-[2rem] bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 hover:border-primary/20 transition-all group relative overflow-hidden shadow-lg hover:shadow-xl active:scale-[0.98]"
+            className="flex flex-col items-start justify-between h-36 p-5 rounded-[2rem] bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 hover:border-primary/20 transition-all group relative overflow-hidden shadow-lg hover:shadow-xl"
           >
             <div className={`flex items-center justify-center size-12 rounded-2xl transition-transform group-hover:scale-110 shadow-md ${app.color}`}>
               <span className="material-symbols-outlined text-[28px]">{app.icon}</span>
@@ -135,7 +223,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ currentUser, members, news, act
       </div>
 
       <div className="px-6 mb-12 space-y-4">
-        <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-[0.2em]">Thông báo mới nhất</h2>
+        <div className="flex items-center justify-between">
+           <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-[0.2em]">Thông báo</h2>
+           {systemNotifications.length > 0 && onClearNotifs && (
+             <button 
+               onClick={onClearNotifs}
+               className="flex items-center gap-1 text-[10px] font-black text-rose-500 uppercase hover:opacity-70 transition-opacity"
+             >
+               <span className="material-symbols-outlined text-sm">delete_sweep</span>
+               Xoá sạch
+             </button>
+           )}
+        </div>
         <div className="space-y-3">
           {notifications.length > 0 ? (
             notifications.map((notif) => (
@@ -155,12 +254,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ currentUser, members, news, act
               </div>
             ))
           ) : (
-            <div className="py-10 text-center flex flex-col items-center gap-2 opacity-40">
-               <span className="material-symbols-outlined text-3xl">notifications_off</span>
-               <p className="text-[10px] font-black uppercase tracking-widest italic">Hiện chưa có thông báo mới</p>
+            <div className="bg-white dark:bg-surface-dark/20 border border-dashed border-gray-200 dark:border-white/5 rounded-[2.5rem] py-10 text-center flex flex-col items-center gap-2 opacity-60">
+               <span className="material-symbols-outlined text-3xl text-gray-300 dark:text-gray-700">notifications_none</span>
+               <p className="text-[10px] font-black text-gray-400 dark:text-gray-600 uppercase tracking-widest italic">Hiện chưa có thông báo mới</p>
             </div>
           )}
         </div>
+        {notifications.length >= 10 && (
+          <p className="text-center text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-2">Đang hiển thị 10 thông báo gần nhất</p>
+        )}
       </div>
 
       {/* SYSTEM NOTIFICATION DETAIL MODAL */}
@@ -199,20 +301,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ currentUser, members, news, act
                  <div className="w-full flex gap-3 mt-8">
                     <button 
                       onClick={() => setViewingSystemNotif(null)}
-                      className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-gray-400 uppercase tracking-widest hover:bg-white/10 transition-all border-white/20 active:bg-primary/20 active:text-primary active:shadow-[0_0_20px_#009454] active:border-primary"
+                      className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-gray-400 uppercase tracking-widest"
                     >
                       Đóng
                     </button>
                     <button 
                       onClick={() => {
-                        const targetScreen = viewingSystemNotif.metadata?.screen || Screen.HOME;
                         const targetId = viewingSystemNotif.metadata?.targetId;
+                        const targetScreen = viewingSystemNotif.metadata?.screen || Screen.ACTIVITY_REG;
                         setViewingSystemNotif(null);
+                        // Điều hướng kèm targetId để mở chi tiết Sáng kiến
                         onNavigate(targetScreen, targetId);
                       }}
-                      className="flex-[2] py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all"
+                      className="flex-2 py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20"
                     >
-                      Xem chi tiết
+                      {viewingSystemNotif.type === 'encouragement' ? 'Tham gia ngay' : 'Xem chi tiết'}
                     </button>
                  </div>
               </div>

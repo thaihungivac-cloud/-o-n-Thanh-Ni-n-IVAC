@@ -3,12 +3,11 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Member, ActivityPlan, BranchName } from '../types';
 
-// Thêm onShowToast vào interface props
 interface ReportsScreenProps {
   onBack: () => void;
   members: Member[];
   activities: ActivityPlan[];
-  onShowToast: (message: string, type?: 'success' | 'error') => void;
+  currentUser: Member | null;
 }
 
 interface ReportHistoryItem {
@@ -21,8 +20,7 @@ interface ReportHistoryItem {
 
 const COLORS = ['#009454', '#2d5e4b'];
 
-// Nhận onShowToast từ props
-const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activities, onShowToast }) => {
+const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activities, currentUser }) => {
   const [reportMode, setReportMode] = useState<'monthly' | 'annual'>('monthly');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -33,6 +31,9 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
   const [showYearPicker, setShowYearPicker] = useState(false);
   const [selectedActivityForList, setSelectedActivityForList] = useState<ActivityPlan | null>(null);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
+
+  // Phân quyền: Chỉ admin và editor mới được xem chi tiết và lịch sử
+  const canAccessAdminFeatures = currentUser?.role === 'admin' || currentUser?.role === 'editor';
 
   // Lịch sử báo cáo
   const [reportHistory, setReportHistory] = useState<ReportHistoryItem[]>(() => {
@@ -106,6 +107,10 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
   }, [members, activities, reportMode, selectedMonth, selectedYear, selectedBranch]);
 
   const handleExportPDF = () => {
+    if (!canAccessAdminFeatures) {
+      alert("Đồng chí không có quyền thực hiện thao tác này.");
+      return;
+    }
     setShowPDFPreview(true);
     const newReport: ReportHistoryItem = {
       id: Date.now().toString(),
@@ -115,14 +120,13 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
       branch: selectedBranch
     };
     setReportHistory(prev => [newReport, ...prev].slice(0, 5));
-    onShowToast("Xuất báo cáo PDF thành công!", "success");
   };
 
   const clearHistory = () => {
+    if (!canAccessAdminFeatures) return;
     if (window.confirm("Đồng chí có chắc muốn xóa sạch lịch sử báo cáo để giải phóng bộ nhớ?")) {
       setReportHistory([]);
       localStorage.removeItem('ivac_report_history');
-      onShowToast("Đã xóa lịch sử báo cáo!", "success");
     }
   };
 
@@ -185,7 +189,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
           </div>
         </section>
 
-        {/* CƠ CẤU GIỚI TÍNH (Chuyển từ Phân Tích sang) */}
+        {/* CƠ CẤU GIỚI TÍNH */}
         <section className="bg-surface-dark/50 p-7 rounded-[2.5rem] border border-white/5 shadow-xl">
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-sm font-black text-white uppercase tracking-wider">Cơ cấu giới tính</h3>
@@ -219,80 +223,102 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
           </div>
         </section>
 
-        {/* 2. Activity Detail with Participants Button */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between px-2">
-            <h3 className="text-sm font-black text-white uppercase tracking-wider">Hoạt động chi tiết</h3>
-            <span className="text-[9px] font-bold text-gray-500 uppercase">{reportData.activities.length} Sự kiện</span>
-          </div>
-          <div className="space-y-3">
-            {reportData.activities.map(act => (
-              <div key={act.id} className="bg-surface-dark/40 p-4 rounded-3xl border border-white/5 flex items-center gap-4">
-                <div className="size-11 rounded-xl bg-white/5 flex flex-col items-center justify-center shrink-0">
-                  <span className="text-[8px] font-black text-gray-500 uppercase">{new Date(act.date).getDate()} Th{new Date(act.date).getMonth()+1}</span>
-                  <span className="material-symbols-outlined text-primary text-sm">event</span>
+        {/* 2. Activity Detail - RESTRICTED */}
+        {canAccessAdminFeatures && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between px-2">
+              <h3 className="text-sm font-black text-white uppercase tracking-wider">Hoạt động chi tiết</h3>
+              <span className="text-[9px] font-bold text-gray-500 uppercase">{reportData.activities.length} Sự kiện</span>
+            </div>
+            <div className="space-y-3">
+              {reportData.activities.map(act => (
+                <div key={act.id} className="bg-surface-dark/40 p-4 rounded-3xl border border-white/5 flex items-center gap-4">
+                  <div className="size-11 rounded-xl bg-white/5 flex flex-col items-center justify-center shrink-0">
+                    <span className="text-[8px] font-black text-gray-500 uppercase">{new Date(act.date).getDate()} Th{new Date(act.date).getMonth()+1}</span>
+                    <span className="material-symbols-outlined text-primary text-sm">event</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-black text-white truncate">{act.name}</h4>
+                    <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">{act.branch} • {act.attendees.length} Đoàn viên có mặt</p>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedActivityForList(act)}
+                    className="size-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center hover:bg-primary hover:text-white transition-all"
+                  >
+                    <span className="material-symbols-outlined text-lg">groups</span>
+                  </button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-xs font-black text-white truncate">{act.name}</h4>
-                  <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">{act.branch} • {act.attendees.length} Đoàn viên có mặt</p>
-                </div>
-                <button 
-                  onClick={() => setSelectedActivityForList(act)}
-                  className="size-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center hover:bg-primary hover:text-white transition-all"
-                >
-                  <span className="material-symbols-outlined text-lg">groups</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+              {reportData.activities.length === 0 && (
+                <p className="text-center py-6 text-[10px] font-black text-gray-600 uppercase tracking-widest italic opacity-50">Không có hoạt động trong kỳ này</p>
+              )}
+            </div>
+          </section>
+        )}
 
-        {/* 3. Actions Area */}
+        {/* 3. Actions Area - Everyone can see but export check role inside handler */}
         <section className="bg-surface-dark/30 p-6 rounded-[2.5rem] border border-white/5 space-y-5">
            <div className="bg-background-dark/50 p-2 rounded-2xl border border-white/5 flex gap-2">
               <input type="email" placeholder="Nhập Gmail nhận báo cáo..." value={emailRecipient} onChange={(e) => setEmailRecipient(e.target.value)} className="bg-transparent border-none text-xs font-bold text-white outline-none flex-1 px-3" />
-              <button onClick={() => onShowToast('Đã gửi email!', "success")} className="size-10 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg"><span className="material-symbols-outlined text-sm">send</span></button>
+              <button onClick={() => alert('Đã gửi email!')} className="size-10 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg"><span className="material-symbols-outlined text-sm">send</span></button>
            </div>
            <div className="grid grid-cols-2 gap-3">
-              <button onClick={handleExportPDF} className="flex flex-col items-center gap-3 p-6 bg-rose-500/10 border border-rose-500/20 rounded-3xl group">
-                 <span className="material-symbols-outlined text-rose-500 text-3xl group-hover:scale-110 transition-transform">picture_as_pdf</span>
+              <button 
+                onClick={handleExportPDF} 
+                className={`flex flex-col items-center gap-3 p-6 rounded-3xl group border transition-all ${canAccessAdminFeatures ? 'bg-rose-500/10 border-rose-500/20' : 'bg-gray-800/50 border-white/5 opacity-50 cursor-not-allowed'}`}
+              >
+                 <span className={`material-symbols-outlined text-3xl group-hover:scale-110 transition-transform ${canAccessAdminFeatures ? 'text-rose-500' : 'text-gray-600'}`}>picture_as_pdf</span>
                  <p className="text-[10px] font-black text-white uppercase">Xuất PDF</p>
               </button>
-              <button onClick={() => onShowToast('Sao lưu thành công!', "success")} className="flex flex-col items-center gap-3 p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-3xl group">
-                 <span className="material-symbols-outlined text-emerald-500 text-3xl group-hover:scale-110 transition-transform">cloud_upload</span>
+              <button 
+                onClick={() => canAccessAdminFeatures ? alert('Sao lưu thành công!') : alert('Đồng chí không có quyền thực hiện thao tác này.')} 
+                className={`flex flex-col items-center gap-3 p-6 rounded-3xl group border transition-all ${canAccessAdminFeatures ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-gray-800/50 border-white/5 opacity-50 cursor-not-allowed'}`}
+              >
+                 <span className={`material-symbols-outlined text-3xl group-hover:scale-110 transition-transform ${canAccessAdminFeatures ? 'text-emerald-500' : 'text-gray-600'}`}>cloud_upload</span>
                  <p className="text-[10px] font-black text-white uppercase">Backup Data</p>
               </button>
            </div>
         </section>
 
-        {/* 4. History Area */}
-        <section className="space-y-4 pb-12">
-           <div className="flex items-center justify-between px-2">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider">Lịch sử xuất (Tối đa 5)</h3>
-              <button onClick={clearHistory} className="text-[9px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">delete_sweep</span> Xóa lịch sử
-              </button>
-           </div>
-           <div className="space-y-3">
-              {reportHistory.map(item => (
-                <div key={item.id} className="bg-surface-dark/20 p-4 rounded-3xl border border-white/5 flex items-center gap-4">
-                   <div className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-400">
-                      <span className="material-symbols-outlined">description</span>
+        {/* 4. History Area - RESTRICTED */}
+        {canAccessAdminFeatures && (
+          <section className="space-y-4 pb-12">
+             <div className="flex items-center justify-between px-2">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">Lịch sử xuất (Tối đa 5)</h3>
+                <button onClick={clearHistory} className="text-[9px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">delete_sweep</span> Xóa lịch sử
+                </button>
+             </div>
+             <div className="space-y-3">
+                {reportHistory.map(item => (
+                  <div key={item.id} className="bg-surface-dark/20 p-4 rounded-3xl border border-white/5 flex items-center gap-4">
+                     <div className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-400">
+                        <span className="material-symbols-outlined">description</span>
+                     </div>
+                     <div className="flex-1">
+                        <p className="text-xs font-black text-white">{item.name}</p>
+                        <p className="text-[9px] text-gray-500 font-bold uppercase">{item.timestamp} • {item.branch}</p>
+                     </div>
+                     <button onClick={() => alert('Đang tải bản ghi...') } className="size-9 bg-primary text-white rounded-lg flex items-center justify-center"><span className="material-symbols-outlined text-sm">download</span></button>
+                  </div>
+                ))}
+                {reportHistory.length === 0 && (
+                   <div className="py-10 text-center border border-dashed border-white/10 rounded-3xl opacity-30">
+                      <p className="text-[9px] font-black uppercase tracking-widest">Trống</p>
                    </div>
-                   <div className="flex-1">
-                      <p className="text-xs font-black text-white">{item.name}</p>
-                      <p className="text-[9px] text-gray-500 font-bold uppercase">{item.timestamp} • {item.branch}</p>
-                   </div>
-                   <button onClick={() => onShowToast('Đang tải bản ghi...', "success") } className="size-9 bg-primary text-white rounded-lg flex items-center justify-center"><span className="material-symbols-outlined text-sm">download</span></button>
-                </div>
-              ))}
-              {reportHistory.length === 0 && (
-                 <div className="py-10 text-center border border-dashed border-white/10 rounded-3xl opacity-30">
-                    <p className="text-[9px] font-black uppercase tracking-widest">Trống</p>
-                 </div>
-              )}
-           </div>
-        </section>
+                )}
+             </div>
+          </section>
+        )}
+
+        {!canAccessAdminFeatures && (
+          <div className="p-10 text-center opacity-30 border-t border-white/5 pt-12">
+             <span className="material-symbols-outlined text-5xl">lock_person</span>
+             <p className="text-[11px] font-black uppercase tracking-widest mt-4 italic">
+               Các tính năng báo cáo chi tiết và lịch sử<br/>chỉ dành cho Cán bộ Quản lý
+             </p>
+          </div>
+        )}
       </main>
 
       {/* MODAL: VIEW PARTICIPANTS */}
@@ -326,7 +352,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
         </div>
       )}
 
-      {/* MODAL: PDF PREVIEW REPORT */}
+      {/* PDF PREVIEW REPORT */}
       {showPDFPreview && (
         <div className="fixed inset-0 z-[200] bg-white flex flex-col animate-in fade-in duration-300">
            <header className="p-6 bg-primary text-white flex items-center justify-between shrink-0">
@@ -339,7 +365,6 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
            
            <div className="flex-1 overflow-y-auto p-10 bg-gray-50 text-gray-900 font-sans">
               <div className="max-w-3xl mx-auto bg-white shadow-2xl p-12 border-t-8 border-primary min-h-screen">
-                 {/* Header Report */}
                  <div className="text-center mb-10 space-y-2">
                     <p className="text-xs font-bold uppercase text-gray-500">ĐOÀN CƠ SỞ IVAC - CHI ĐOÀN {selectedBranch}</p>
                     <div className="h-0.5 w-20 bg-primary mx-auto my-4"></div>
@@ -347,7 +372,6 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
                     <p className="text-sm font-bold text-gray-600">{reportMode === 'annual' ? `Năm ${selectedYear}` : `Tháng ${selectedMonth}/${selectedYear}`}</p>
                  </div>
 
-                 {/* 1. Human Resources */}
                  <div className="mb-10">
                     <h4 className="text-sm font-black border-l-4 border-primary pl-3 uppercase mb-4 text-primary">I. Tình hình nhân sự & Tăng trưởng</h4>
                     <table className="w-full text-left text-sm border-collapse">
@@ -374,7 +398,6 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
                     </table>
                  </div>
 
-                 {/* 2. Activities List */}
                  <div className="mb-10">
                     <h4 className="text-sm font-black border-l-4 border-primary pl-3 uppercase mb-4 text-primary">II. Thống kê hoạt động chi tiết</h4>
                     <div className="space-y-4">
@@ -395,7 +418,6 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
                     </div>
                  </div>
 
-                 {/* 3. Member List Mini */}
                  <div className="mb-10">
                     <h4 className="text-sm font-black border-l-4 border-primary pl-3 uppercase mb-4 text-primary">III. Danh sách Đoàn viên hiện diện</h4>
                     <div className="grid grid-cols-2 gap-x-10 gap-y-2">
@@ -409,7 +431,6 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
                     </div>
                  </div>
 
-                 {/* Signatures */}
                  <div className="mt-20 flex justify-between px-10">
                     <div className="text-center">
                        <p className="text-[10px] font-black uppercase mb-16">Người lập báo cáo</p>
@@ -427,7 +448,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
            
            <footer className="p-6 bg-gray-100 border-t border-gray-200 flex gap-4 shrink-0">
               <button onClick={() => setShowPDFPreview(false)} className="flex-1 py-4 bg-gray-200 text-gray-600 rounded-2xl font-black text-xs uppercase">Thoát</button>
-              <button onClick={() => onShowToast('Đang xuất tệp PDF thực tế...', "success")} className="flex-[2] py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase shadow-xl flex items-center justify-center gap-2">
+              <button onClick={() => alert('Đang xuất tệp PDF thực tế...')} className="flex-[2] py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase shadow-xl flex items-center justify-center gap-2">
                 <span className="material-symbols-outlined text-lg">download</span> Tải xuống bản PDF
               </button>
            </footer>

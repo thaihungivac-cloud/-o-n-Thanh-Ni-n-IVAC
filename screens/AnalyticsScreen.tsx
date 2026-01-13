@@ -3,18 +3,15 @@ import React, { useState, useMemo } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from 'recharts';
 import { Member, ActivityPlan, BranchName, SystemNotification } from '../types';
 
-// Thêm onShowToast vào interface props
 interface AnalyticsScreenProps {
   onBack: () => void;
   members: Member[];
   activities: ActivityPlan[];
   currentUser: Member | null;
   onSendNotification: (notif: Omit<SystemNotification, 'id' | 'timestamp' | 'isRead'>) => void;
-  onShowToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-// Nhận onShowToast từ props
-const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack, members, activities, currentUser, onSendNotification, onShowToast }) => {
+const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack, members, activities, currentUser, onSendNotification }) => {
   const [selectedBranch, setSelectedBranch] = useState<string>('TẤT CẢ');
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
@@ -29,6 +26,7 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack, members, acti
   const years = Array.from({ length: 16 }, (_, i) => 2020 + i);
 
   const analyticsData = useMemo(() => {
+    const now = new Date().getTime();
     const filteredMembers = selectedBranch === 'TẤT CẢ' 
       ? members 
       : members.filter(m => m.branch.includes(selectedBranch));
@@ -52,15 +50,23 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack, members, acti
       let registeredCount = 0;
       let attendedCount = 0;
       let totalPoints = 0;
+      let violationCount = 0; // Số lần vi phạm thực tế (Đăng ký nhưng không đi và HĐ đã chốt)
 
       activitiesInPeriod.forEach(act => {
         const isRegistered = act.participants.some(p => p.memberId === m.id);
         const isAttended = act.attendees.some(p => p.memberId === m.id);
+        const endDateTime = new Date(`${act.date}T${act.endTime}`).getTime();
+        const isFinished = now > endDateTime;
 
         if (isRegistered) registeredCount++;
         if (isAttended) {
           attendedCount++;
           totalPoints += act.points;
+        }
+
+        // Logic vi phạm: Hoạt động đã kết thúc + đã đăng ký + không có dữ liệu điểm danh
+        if (isFinished && isRegistered && !isAttended) {
+          violationCount++;
         }
       });
 
@@ -72,7 +78,7 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack, members, acti
         points: totalPoints,
         attendedCount,
         registeredCount,
-        absentCount: registeredCount - attendedCount
+        violationCount
       };
     });
 
@@ -88,20 +94,16 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack, members, acti
         fullName: m.name
       }));
 
-    // LOGIC CẬP NHẬT: Lọc những người đã bắt đầu tham gia (count/points > 0)
-    // Để tìm ra người thấp nhất trong nhóm đang hoạt động, tránh nhắc nhở người mới hoàn toàn (0)
     const warnings = {
-      // Vi phạm nhiều nhất (số lần vắng sau khi đã đăng ký)
+      // Chỉ nhắc nhở những người có trên 2 lần vi phạm (từ lần thứ 3)
       violation: [...memberStats]
-        .filter(m => m.absentCount > 0)
-        .sort((a, b) => b.absentCount - a.absentCount)[0],
+        .filter(m => m.violationCount > 2)
+        .sort((a, b) => b.violationCount - a.violationCount)[0],
         
-      // Tham gia thấp nhất trong số những người ĐÃ TỪNG tham gia
       lowParticipation: [...memberStats]
         .filter(m => m.attendedCount > 0)
         .sort((a, b) => a.attendedCount - b.attendedCount)[0],
         
-      // Điểm rèn luyện thấp nhất trong số những người ĐÃ CÓ điểm
       lowPoints: [...memberStats]
         .filter(m => m.points > 0)
         .sort((a, b) => a.points - b.points)[0]
@@ -127,8 +129,7 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack, members, acti
       message,
       type
     });
-    // Thay alert bằng onShowToast
-    onShowToast(`Đã gửi thông báo ${title.toLowerCase()} tới đồng chí ${targetName}!`, "success");
+    alert(`Đã gửi thông báo ${title.toLowerCase()} tới đồng chí ${targetName}!`);
   };
 
   return (
@@ -286,7 +287,7 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack, members, acti
                    <BarChart data={analyticsData.top10ChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} interval={0} tick={{ fill: '#6b7280', fontSize: 9, fontWeight: 800 }} dy={10} />
-                      <YAxis hide allowDecimals={false} />
+                      <YAxis hide hide allowDecimals={false} />
                       <Tooltip cursor={{ fill: '#ffffff05' }} contentStyle={{ backgroundColor: '#162e24', border: '1px solid #ffffff10', borderRadius: '12px' }} />
                       <Bar dataKey="points" fill="#fbbf24" radius={[8, 8, 0, 0]} barSize={25}>
                          <LabelList dataKey="points" position="top" style={{ fill: '#fbbf24', fontSize: 10, fontWeight: 'bold' }} />
@@ -333,7 +334,7 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack, members, acti
            </div>
 
            <div className="space-y-3">
-              {analyticsData.warnings.violation && (
+              {analyticsData.warnings.violation ? (
                 <div className="bg-rose-500/5 border border-rose-500/20 rounded-[2rem] p-5 flex items-center gap-4 animate-in fade-in slide-in-from-right duration-500">
                    <div className="relative">
                       <img src={analyticsData.warnings.violation.avatar} className="size-12 rounded-xl object-cover grayscale-[0.5]" />
@@ -343,16 +344,20 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack, members, acti
                    </div>
                    <div className="flex-1 min-w-0">
                       <h4 className="text-xs font-black text-white uppercase truncate">Vi phạm chuyên cần</h4>
-                      <p className="text-[10px] text-rose-500 font-bold mt-0.5">Đ/c {analyticsData.warnings.violation.name} bỏ vắng {analyticsData.warnings.violation.absentCount} lần (Đã ĐK nhưng không đến)</p>
+                      <p className="text-[10px] text-rose-500 font-bold mt-0.5">Đ/c {analyticsData.warnings.violation.name} vắng {analyticsData.warnings.violation.violationCount} lần hoạt động đã kết thúc</p>
                    </div>
                    {isStaff && (
                      <button 
-                       onClick={() => handleSendReminder(analyticsData.warnings.violation!.id, analyticsData.warnings.violation!.name, 'warning', 'Nhắc nhở chuyên cần', `Đồng chí đã bỏ vắng ${analyticsData.warnings.violation!.absentCount} hoạt động đã đăng ký. Vui lòng nghiêm túc hơn!`)} 
+                       onClick={() => handleSendReminder(analyticsData.warnings.violation!.id, analyticsData.warnings.violation!.name, 'warning', 'Cảnh báo chuyên cần', `Đồng chí đã bỏ vắng ${analyticsData.warnings.violation!.violationCount} hoạt động đã chốt danh sách. Vui lòng nghiêm túc chấp hành nội quy!`)} 
                        className="px-3 py-2 bg-rose-500 text-white rounded-xl text-[8px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                      >
-                        Nhắc nhở
+                        Cảnh báo
                      </button>
                    )}
+                </div>
+              ) : (
+                <div className="p-5 border border-dashed border-white/5 rounded-[2rem] text-center opacity-40">
+                   <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Không có vi phạm nghiêm trọng (>2 lần)</p>
                 </div>
               )}
 

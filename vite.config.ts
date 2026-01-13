@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         alias: {
-          // Thay thế __dirname bằng path.resolve('.') để tránh lỗi không tìm thấy __dirname trong ESM
+          // Fix: Avoid using __dirname which is not available in ESM/Vite environments; resolve relative to root instead.
           '@': path.resolve('.'),
         }
       }

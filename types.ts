@@ -31,6 +31,7 @@ export interface Member {
   branch: string;
   phone: string;
   email: string;
+  password?: string; // Mật khẩu đăng nhập
   notes: string;
   status: 'active' | 'transfer' | 'leave';
   avatar?: string;

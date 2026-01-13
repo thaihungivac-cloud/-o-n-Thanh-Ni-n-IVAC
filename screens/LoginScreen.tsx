@@ -5,10 +5,9 @@ import { Member } from '../types';
 interface LoginScreenProps {
   onLogin: (user: Member) => void;
   members: Member[];
-  onShowToast: (msg: string, type: 'success' | 'error') => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, members, onShowToast }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, members }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -25,20 +24,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, members, onShowToast
       if (foundUser) {
         if (password.length >= 6) {
           onLogin(foundUser);
-          onShowToast("Đăng nhập thành công!", "success");
+          alert("Đăng nhập thành công! Chào mừng đồng chí trở lại.");
         } else {
-          const msg = 'Mật khẩu phải có ít nhất 6 ký tự.';
-          setError(msg);
-          onShowToast(msg, "error");
+          setError('Mật khẩu phải có ít nhất 6 ký tự.');
           setLoading(false);
         }
       } else {
-        const msg = 'Gmail này chưa được đăng ký trong hệ thống.';
-        setError(msg);
-        onShowToast(msg, "error");
+        setError('Địa chỉ Gmail này chưa được đăng ký trong hệ thống.');
         setLoading(false);
       }
-    }, 1000);
+    }, 1200);
   };
 
   return (
@@ -50,6 +45,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, members, onShowToast
 
       <div className="relative z-10 flex flex-col flex-grow px-8 pt-20">
         <div className="flex flex-col items-center mb-12">
+          {/* Logo stylized fallback to avoid "image not found" */}
           <div className="w-32 h-32 bg-white rounded-full shadow-2xl flex items-center justify-center p-2 mb-6 border-4 border-primary/20 transform hover:scale-105 transition-transform">
              <div className="flex flex-col items-center justify-center border-4 border-primary rounded-full w-full h-full">
                 <span className="text-primary font-black text-2xl leading-none">IVAC</span>

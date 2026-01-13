@@ -2,7 +2,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Member, YouthPosition, BranchName, MemberRole } from '../types';
 
-// Thêm onShowToast vào interface props
 interface MembersScreenProps {
   currentUser: Member | null;
   members: Member[];
@@ -10,11 +9,9 @@ interface MembersScreenProps {
   onUpdateMember: (member: Member) => void;
   onDeleteMember: (id: string) => void;
   onBack: () => void;
-  onShowToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-// Nhận onShowToast từ props
-const MembersScreen: React.FC<MembersScreenProps> = ({ currentUser, members, onAddMember, onUpdateMember, onDeleteMember, onBack, onShowToast }) => {
+const MembersScreen: React.FC<MembersScreenProps> = ({ currentUser, members, onAddMember, onUpdateMember, onDeleteMember, onBack }) => {
   const isMasterAdmin = currentUser?.position === 'Bí thư đoàn cơ sở' || currentUser?.role === 'admin';
   const isEditor = currentUser?.role === 'editor';
   
@@ -24,8 +21,6 @@ const MembersScreen: React.FC<MembersScreenProps> = ({ currentUser, members, onA
   const canSeeFullEmail = isMasterAdmin || isEditor;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
-  const [selectedQRMember, setSelectedQRMember] = useState<Member | null>(null);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('Tất cả');
@@ -112,13 +107,13 @@ const MembersScreen: React.FC<MembersScreenProps> = ({ currentUser, members, onA
 
   const handleSave = () => {
     if (!formData.code || !formData.name || !formData.email || tempBranches.length === 0 || !formData.dob) {
-      onShowToast("Đồng chí vui lòng nhập đầy đủ Mã, Họ tên, Ngày sinh, Gmail và chọn Đơn vị.", "error");
+      alert("Đồng chí vui lòng nhập đầy đủ Mã, Họ tên, Ngày sinh, Gmail và chọn Đơn vị.");
       return;
     }
 
     if (editingMember) {
       onUpdateMember({ ...editingMember, ...formData } as Member);
-      onShowToast("Cập nhật thông tin đoàn viên thành công!", "success");
+      alert("Cập nhật thông tin đoàn viên thành công!");
     } else {
       const newMember: Member = {
         ...formData,
@@ -127,15 +122,22 @@ const MembersScreen: React.FC<MembersScreenProps> = ({ currentUser, members, onA
         avatar: `https://picsum.photos/200/200?random=${Math.floor(Math.random() * 1000)}`
       } as Member;
       onAddMember(newMember);
-      onShowToast("Thêm mới đoàn viên thành công!", "success");
+      alert("Thêm mới đoàn viên thành công!");
     }
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Đồng chí có chắc chắn muốn xoá đoàn viên này khỏi hệ thống?')) {
-      onDeleteMember(id);
-      onShowToast("Đã xoá đoàn viên thành công!", "success");
+  const handleDelete = (e: React.MouseEvent, member: Member) => {
+    e.stopPropagation(); // Ngăn chặn sự kiện click lan ra ngoài
+
+    if (member.id === currentUser?.id) {
+      alert("Đồng chí không thể tự xoá chính mình khỏi hệ thống khi đang đăng nhập.");
+      return;
+    }
+
+    if (window.confirm(`Xác nhận XOÁ đoàn viên ${member.name} (${member.code})? Hành động này không thể hoàn tác.`)) {
+      onDeleteMember(member.id);
+      alert("Đã xoá đoàn viên thành công!");
     }
   };
 
@@ -202,7 +204,7 @@ const MembersScreen: React.FC<MembersScreenProps> = ({ currentUser, members, onA
                       </button>
                     )}
                     {canDelete && (
-                      <button onClick={() => handleDelete(m.id)} className="size-9 flex items-center justify-center text-red-500 bg-red-500/10 rounded-xl transition-all hover:scale-110 active:scale-90 border border-red-500/10">
+                      <button onClick={(e) => handleDelete(e, m)} className="size-9 flex items-center justify-center text-red-500 bg-red-500/10 rounded-xl transition-all hover:scale-110 active:scale-90 border border-red-500/10">
                         <span className="material-symbols-outlined text-base">delete</span>
                       </button>
                     )}

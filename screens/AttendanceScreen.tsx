@@ -3,18 +3,15 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import jsQR from 'jsqr';
 import { ActivityPlan, Member, BranchName } from '../types';
 
-// Thêm onShowToast vào interface props
 interface AttendanceScreenProps {
   currentUser: Member | null;
   members: Member[];
   activities: ActivityPlan[];
   onUpdateActivities: React.Dispatch<React.SetStateAction<ActivityPlan[]>>;
   onBack: () => void;
-  onShowToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-// Nhận onShowToast từ props
-const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, members, activities, onUpdateActivities, onBack, onShowToast }) => {
+const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, members, activities, onUpdateActivities, onBack }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [scanResult, setScanResult] = useState<{ success: boolean; message: string; subMessage?: string } | null>(null);
@@ -26,6 +23,22 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, member
   const requestRef = useRef<number>(null);
 
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'editor';
+
+  const stopScanner = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (requestRef.current) {
+      cancelAnimationFrame(requestRef.current);
+    }
+    setIsScanning(false);
+  }, []);
+
+  // Đảm bảo dọn dẹp camera khi rời màn hình
+  useEffect(() => {
+    return () => stopScanner();
+  }, [stopScanner]);
 
   const activeActivities = useMemo(() => {
     const now = new Date();
@@ -50,6 +63,20 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, member
     const activity = activities.find(a => a.id === activityId);
     if (!activity) return { success: false, message: "Không tìm thấy hoạt động." };
 
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const currentTime = now.getTime();
+    const startDateTime = new Date(`${activity.date}T${activity.startTime}`).getTime();
+    const endDateTime = new Date(`${activity.date}T${activity.endTime}`).getTime();
+
+    if (activity.date !== todayStr || currentTime < startDateTime) {
+      return { success: false, message: "Chưa đến giờ điểm danh", subMessage: "Vui lòng quay lại khi hoạt động bắt đầu." };
+    }
+    
+    if (currentTime > endDateTime) {
+      return { success: false, message: "Đã hết giờ điểm danh", subMessage: "Hệ thống đã chốt danh sách tham gia." };
+    }
+
     const targetMember = members.find(m => m.code === memberCodeOrId || m.id === memberCodeOrId);
     if (!targetMember) {
       return { success: false, message: "Mã không hợp lệ." };
@@ -60,7 +87,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, member
       return { 
         success: false, 
         message: "Đồng chí chưa đăng ký",
-        subMessage: `Đ/c ${targetMember.name} vui lòng đăng ký trước.`
+        subMessage: `Đ/c ${targetMember.name} vui lòng đăng ký trước khi điểm danh.`
       };
     }
 
@@ -94,17 +121,6 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, member
     };
   }, [activities, members, onUpdateActivities]);
 
-  const stopScanner = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (requestRef.current) {
-      cancelAnimationFrame(requestRef.current);
-    }
-    setIsScanning(false);
-  }, []);
-
   const scanFrame = useCallback(() => {
     if (!videoRef.current || !canvasRef.current || !isScanning) return;
     const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
@@ -127,6 +143,8 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, member
           const actId = selectedActivityId || (activeActivities.length > 0 ? activeActivities[0].id : '');
           if (actId) {
             setScanResult(handleAttendanceLogic(actId, decodedData, currentUser.name));
+          } else {
+            setScanResult({ success: false, message: "Không có hoạt động phù hợp", subMessage: "Hiện không có hoạt động nào đang trong khung giờ điểm danh." });
           }
           stopScanner();
         }
@@ -148,8 +166,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, member
         requestRef.current = requestAnimationFrame(scanFrame);
       }
     } catch (err) {
-      // Thay alert bằng onShowToast
-      onShowToast("Không thể truy cập Camera.", "error");
+      alert("Không thể truy cập Camera.");
       setIsScanning(false);
     }
   };
@@ -213,10 +230,9 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, member
   const handleManualConfirm = (member: Member) => {
     const result = handleAttendanceLogic(selectedActivityId, member.id, currentUser?.name || 'Cán bộ');
     if (result.success) {
-      // Thay alert bằng onShowToast
-      onShowToast(`Đã ghi nhận điểm danh thành công cho đồng chí ${member.name}`, "success");
+      alert(`Đã ghi nhận điểm danh thành công cho đồng chí ${member.name}`);
     } else {
-      onShowToast(`Thất bại: ${result.message}`, "error");
+      alert(`Thất bại: ${result.message}`);
     }
   };
 
@@ -274,7 +290,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, member
                 )}
              </div>
            ) : (
-             <p className="text-center text-gray-500 text-[10px] font-black uppercase tracking-widest py-4">Hiện không có hoạt động nào đang diễn ra</p>
+             <p className="text-center text-gray-500 text-[10px] font-black uppercase tracking-widest py-4">Hiện không có hoạt động nào trong khung giờ điểm danh</p>
            )}
         </div>
 
