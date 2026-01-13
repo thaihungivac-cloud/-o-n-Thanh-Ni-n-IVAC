@@ -199,7 +199,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ currentUser, members, news, act
                  <div className="w-full flex gap-3 mt-8">
                     <button 
                       onClick={() => setViewingSystemNotif(null)}
-                      className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-gray-400 uppercase tracking-widest hover:bg-white/10 transition-all border-white/20 active:bg-primary/20 active:text-primary active:shadow-[0_0_20px_#009454] active:border-primary"
+                      className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-gray-400 uppercase tracking-widest hover:bg-white/10 transition-all border-white/20 active:ring-2 active:ring-white/40"
                     >
                       Đóng
                     </button>
