@@ -45,19 +45,19 @@ const ActivityScreen: React.FC<ActivityScreenProps> = ({ onBack, currentUser, on
     localStorage.setItem('ivac_ideas', JSON.stringify(validIdeas));
   }, [ideas]);
 
-  // LOGIC CẬP NHẬT: Xử lý initialId để dẫn trực tiếp vào xem chi tiết bài viết sáng kiến của đoàn viên
+  // LOGIC CẬP NHẬT: Xử lý initialId để dẫn trực tiếp vào xem chi tiết bài viết
   useEffect(() => {
     if (initialId && ideas.length > 0) {
       const target = ideas.find(i => i.id === initialId);
       if (target) {
-        // Tự động chuyển tab tùy theo tác giả
+        // Tự động chuyển tab nếu là bài viết của chính mình
         if (target.authorId === currentUser?.id) {
           setActiveTab('my');
         } else {
           setActiveTab('explore');
         }
-        // Mở ngay modal chi tiết sáng kiến để Admin xem được nội dung ngay lập tức
-        setTimeout(() => setViewingIdea(target), 100);
+        // Mở ngay modal chi tiết sáng kiến
+        setViewingIdea(target);
       }
     }
   }, [initialId, ideas, currentUser]);
