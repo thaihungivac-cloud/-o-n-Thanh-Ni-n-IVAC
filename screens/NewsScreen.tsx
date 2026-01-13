@@ -2,17 +2,14 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Member, NewsItem, NewsComment } from '../types';
 
-// Thêm onShowToast vào interface props
 interface NewsScreenProps {
   currentUser: Member | null;
   news: NewsItem[];
   setNews: React.Dispatch<React.SetStateAction<NewsItem[]>>;
   onBack: () => void;
-  onShowToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-// Nhận onShowToast từ props
-const NewsScreen: React.FC<NewsScreenProps> = ({ currentUser, news, setNews, onBack, onShowToast }) => {
+const NewsScreen: React.FC<NewsScreenProps> = ({ currentUser, news, setNews, onBack }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,7 +75,7 @@ const NewsScreen: React.FC<NewsScreenProps> = ({ currentUser, news, setNews, onB
 
   const handleSave = () => {
     if (!formData.title || !formData.content) {
-      onShowToast("Đồng chí vui lòng nhập đầy đủ tiêu đề và nội dung.", "error");
+      alert("Đồng chí vui lòng nhập đầy đủ tiêu đề và nội dung.");
       return;
     }
     if (editingId) {
@@ -87,7 +84,7 @@ const NewsScreen: React.FC<NewsScreenProps> = ({ currentUser, news, setNews, onB
         ...formData, 
         author: currentUser?.name || n.author 
       } as NewsItem : n));
-      onShowToast("Cập nhật bài viết thành công!", "success");
+      alert("Cập nhật bài viết thành công!");
     } else {
       const newItem: NewsItem = {
         id: Date.now().toString(),
@@ -103,7 +100,7 @@ const NewsScreen: React.FC<NewsScreenProps> = ({ currentUser, news, setNews, onB
         comments: []
       };
       setNews(prev => [newItem, ...prev]);
-      onShowToast("Đăng tin thành công!", "success");
+      alert("Đăng tin thành công!");
     }
     setIsModalOpen(false);
     setEditingId(null);
@@ -128,7 +125,7 @@ const NewsScreen: React.FC<NewsScreenProps> = ({ currentUser, news, setNews, onB
         if (viewingNews?.id === id) setViewingNews(updatedItem);
         
         // Phản hồi thao tác Thích bài viết
-        onShowToast(isLiked ? "Đã bỏ thích bài viết." : "Đã thích bài viết thành công!", "success");
+        alert(isLiked ? "Đã bỏ thích bài viết." : "Đã thích bài viết thành công!");
         
         return updatedItem;
       }
@@ -156,12 +153,12 @@ const NewsScreen: React.FC<NewsScreenProps> = ({ currentUser, news, setNews, onB
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           await navigator.clipboard.writeText(shareUrl);
-          onShowToast('Đã sao chép liên kết vào bộ nhớ tạm.', "success");
+          alert('Đã sao chép liên kết vào bộ nhớ tạm.');
         }
       }
     } else {
       await navigator.clipboard.writeText(shareUrl);
-      onShowToast('Đã sao chép liên kết vào bộ nhớ tạm.', "success");
+      alert('Đã sao chép liên kết vào bộ nhớ tạm.');
     }
   };
 
@@ -171,7 +168,7 @@ const NewsScreen: React.FC<NewsScreenProps> = ({ currentUser, news, setNews, onB
     if (window.confirm('Đồng chí có chắc chắn muốn xoá vĩnh viễn bài viết này không?')) {
       if (viewingNews?.id === id) setViewingNews(null);
       setNews(currentNews => currentNews.filter(n => n.id !== id));
-      onShowToast("Đã xoá bài viết thành công!", "success");
+      alert("Đã xoá bài viết thành công!");
     }
   };
 
@@ -194,7 +191,7 @@ const NewsScreen: React.FC<NewsScreenProps> = ({ currentUser, news, setNews, onB
       return n;
     }));
     setCommentInput('');
-    onShowToast("Đã gửi bình luận thành công!", "success");
+    alert("Đã gửi bình luận thành công!");
   };
 
   const getCategoryColor = (cat: string) => {
