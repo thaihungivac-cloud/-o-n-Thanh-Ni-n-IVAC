@@ -2,14 +2,17 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Document, Member } from '../types';
 
+// Thêm onShowToast vào interface props
 interface LibraryScreenProps {
   currentUser: Member | null;
   docs: Document[];
   setDocs: React.Dispatch<React.SetStateAction<Document[]>>;
   onBack: () => void;
+  onShowToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-const LibraryScreen: React.FC<LibraryScreenProps> = ({ currentUser, docs, setDocs, onBack }) => {
+// Nhận onShowToast từ props
+const LibraryScreen: React.FC<LibraryScreenProps> = ({ currentUser, docs, setDocs, onBack, onShowToast }) => {
   const isAdmin = currentUser?.position === 'Bí thư đoàn cơ sở';
   const categories = ["Công văn", "Văn bản", "Tài liệu"];
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,20 +82,20 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ currentUser, docs, setDoc
 
   const handleSave = () => {
     if (!editingDoc.name || !editingDoc.code || !editingDoc.expiryDate || !editingDoc.url) {
-      alert("Đồng chí vui lòng điền đầy đủ thông tin và tải lên tệp đính kèm.");
+      onShowToast("Đồng chí vui lòng điền đầy đủ thông tin và tải lên tệp đính kèm.", "error");
       return;
     }
 
     if (editingDoc.id) {
       setDocs(docs.map(d => d.id === editingDoc.id ? (editingDoc as Document) : d));
-      alert("Cập nhật văn bản thành công!");
+      onShowToast("Cập nhật văn bản thành công!", "success");
     } else {
       const newDoc: Document = {
         ...editingDoc as Document,
         id: Date.now().toString(),
       };
       setDocs([newDoc, ...docs]);
-      alert("Tải lên văn bản thành công!");
+      onShowToast("Tải lên văn bản thành công!", "success");
     }
     setIsFormOpen(false);
   };
@@ -102,7 +105,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ currentUser, docs, setDoc
     if (window.confirm("Xác nhận XOÁ vĩnh viễn văn bản này khỏi hệ thống?")) {
       setDocs(docs.filter(d => d.id !== id));
       setSelectedDoc(null);
-      alert("Đã xoá văn bản thành công!");
+      onShowToast("Đã xoá văn bản thành công!", "success");
     }
   };
 

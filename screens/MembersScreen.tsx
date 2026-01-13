@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Member, YouthPosition, BranchName, MemberRole } from '../types';
 
+// Thêm onShowToast vào interface props
 interface MembersScreenProps {
   currentUser: Member | null;
   members: Member[];
@@ -9,9 +10,11 @@ interface MembersScreenProps {
   onUpdateMember: (member: Member) => void;
   onDeleteMember: (id: string) => void;
   onBack: () => void;
+  onShowToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-const MembersScreen: React.FC<MembersScreenProps> = ({ currentUser, members, onAddMember, onUpdateMember, onDeleteMember, onBack }) => {
+// Nhận onShowToast từ props
+const MembersScreen: React.FC<MembersScreenProps> = ({ currentUser, members, onAddMember, onUpdateMember, onDeleteMember, onBack, onShowToast }) => {
   const isMasterAdmin = currentUser?.position === 'Bí thư đoàn cơ sở' || currentUser?.role === 'admin';
   const isEditor = currentUser?.role === 'editor';
   
@@ -109,13 +112,13 @@ const MembersScreen: React.FC<MembersScreenProps> = ({ currentUser, members, onA
 
   const handleSave = () => {
     if (!formData.code || !formData.name || !formData.email || tempBranches.length === 0 || !formData.dob) {
-      alert("Đồng chí vui lòng nhập đầy đủ Mã, Họ tên, Ngày sinh, Gmail và chọn Đơn vị.");
+      onShowToast("Đồng chí vui lòng nhập đầy đủ Mã, Họ tên, Ngày sinh, Gmail và chọn Đơn vị.", "error");
       return;
     }
 
     if (editingMember) {
       onUpdateMember({ ...editingMember, ...formData } as Member);
-      alert("Cập nhật thông tin đoàn viên thành công!");
+      onShowToast("Cập nhật thông tin đoàn viên thành công!", "success");
     } else {
       const newMember: Member = {
         ...formData,
@@ -124,7 +127,7 @@ const MembersScreen: React.FC<MembersScreenProps> = ({ currentUser, members, onA
         avatar: `https://picsum.photos/200/200?random=${Math.floor(Math.random() * 1000)}`
       } as Member;
       onAddMember(newMember);
-      alert("Thêm mới đoàn viên thành công!");
+      onShowToast("Thêm mới đoàn viên thành công!", "success");
     }
     setIsModalOpen(false);
   };
@@ -132,7 +135,7 @@ const MembersScreen: React.FC<MembersScreenProps> = ({ currentUser, members, onA
   const handleDelete = (id: string) => {
     if (window.confirm('Đồng chí có chắc chắn muốn xoá đoàn viên này khỏi hệ thống?')) {
       onDeleteMember(id);
-      alert("Đã xoá đoàn viên thành công!");
+      onShowToast("Đã xoá đoàn viên thành công!", "success");
     }
   };
 

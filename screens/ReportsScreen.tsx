@@ -3,10 +3,12 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Member, ActivityPlan, BranchName } from '../types';
 
+// Thêm onShowToast vào interface props
 interface ReportsScreenProps {
   onBack: () => void;
   members: Member[];
   activities: ActivityPlan[];
+  onShowToast: (message: string, type?: 'success' | 'error') => void;
 }
 
 interface ReportHistoryItem {
@@ -19,7 +21,8 @@ interface ReportHistoryItem {
 
 const COLORS = ['#009454', '#2d5e4b'];
 
-const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activities }) => {
+// Nhận onShowToast từ props
+const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activities, onShowToast }) => {
   const [reportMode, setReportMode] = useState<'monthly' | 'annual'>('monthly');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -112,12 +115,14 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
       branch: selectedBranch
     };
     setReportHistory(prev => [newReport, ...prev].slice(0, 5));
+    onShowToast("Xuất báo cáo PDF thành công!", "success");
   };
 
   const clearHistory = () => {
     if (window.confirm("Đồng chí có chắc muốn xóa sạch lịch sử báo cáo để giải phóng bộ nhớ?")) {
       setReportHistory([]);
       localStorage.removeItem('ivac_report_history');
+      onShowToast("Đã xóa lịch sử báo cáo!", "success");
     }
   };
 
@@ -246,14 +251,14 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
         <section className="bg-surface-dark/30 p-6 rounded-[2.5rem] border border-white/5 space-y-5">
            <div className="bg-background-dark/50 p-2 rounded-2xl border border-white/5 flex gap-2">
               <input type="email" placeholder="Nhập Gmail nhận báo cáo..." value={emailRecipient} onChange={(e) => setEmailRecipient(e.target.value)} className="bg-transparent border-none text-xs font-bold text-white outline-none flex-1 px-3" />
-              <button onClick={() => alert('Đã gửi email!')} className="size-10 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg"><span className="material-symbols-outlined text-sm">send</span></button>
+              <button onClick={() => onShowToast('Đã gửi email!', "success")} className="size-10 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg"><span className="material-symbols-outlined text-sm">send</span></button>
            </div>
            <div className="grid grid-cols-2 gap-3">
               <button onClick={handleExportPDF} className="flex flex-col items-center gap-3 p-6 bg-rose-500/10 border border-rose-500/20 rounded-3xl group">
                  <span className="material-symbols-outlined text-rose-500 text-3xl group-hover:scale-110 transition-transform">picture_as_pdf</span>
                  <p className="text-[10px] font-black text-white uppercase">Xuất PDF</p>
               </button>
-              <button onClick={() => alert('Sao lưu thành công!')} className="flex flex-col items-center gap-3 p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-3xl group">
+              <button onClick={() => onShowToast('Sao lưu thành công!', "success")} className="flex flex-col items-center gap-3 p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-3xl group">
                  <span className="material-symbols-outlined text-emerald-500 text-3xl group-hover:scale-110 transition-transform">cloud_upload</span>
                  <p className="text-[10px] font-black text-white uppercase">Backup Data</p>
               </button>
@@ -278,7 +283,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
                       <p className="text-xs font-black text-white">{item.name}</p>
                       <p className="text-[9px] text-gray-500 font-bold uppercase">{item.timestamp} • {item.branch}</p>
                    </div>
-                   <button onClick={() => alert('Đang tải bản ghi...') } className="size-9 bg-primary text-white rounded-lg flex items-center justify-center"><span className="material-symbols-outlined text-sm">download</span></button>
+                   <button onClick={() => onShowToast('Đang tải bản ghi...', "success") } className="size-9 bg-primary text-white rounded-lg flex items-center justify-center"><span className="material-symbols-outlined text-sm">download</span></button>
                 </div>
               ))}
               {reportHistory.length === 0 && (
@@ -422,7 +427,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ onBack, members, activiti
            
            <footer className="p-6 bg-gray-100 border-t border-gray-200 flex gap-4 shrink-0">
               <button onClick={() => setShowPDFPreview(false)} className="flex-1 py-4 bg-gray-200 text-gray-600 rounded-2xl font-black text-xs uppercase">Thoát</button>
-              <button onClick={() => alert('Đang xuất tệp PDF thực tế...')} className="flex-[2] py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase shadow-xl flex items-center justify-center gap-2">
+              <button onClick={() => onShowToast('Đang xuất tệp PDF thực tế...', "success")} className="flex-[2] py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase shadow-xl flex items-center justify-center gap-2">
                 <span className="material-symbols-outlined text-lg">download</span> Tải xuống bản PDF
               </button>
            </footer>
