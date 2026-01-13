@@ -2,18 +2,15 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ActivityPlan, BranchName, YouthPosition, Member, ParticipantDetail } from '../types';
 
-// Thêm onShowToast vào interface props
 interface ActivityRegistrationScreenProps {
   currentUser: Member | null;
   members: Member[];
   activities: ActivityPlan[];
   onUpdateActivities: React.Dispatch<React.SetStateAction<ActivityPlan[]>>;
   onBack: () => void;
-  onShowToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-// Nhận onShowToast từ props
-const ActivityRegistrationScreen: React.FC<ActivityRegistrationScreenProps> = ({ currentUser, members, activities, onUpdateActivities, onBack, onShowToast }) => {
+const ActivityRegistrationScreen: React.FC<ActivityRegistrationScreenProps> = ({ currentUser, members, activities, onUpdateActivities, onBack }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isListModalOpen, setIsListModalOpen] = useState(false);
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
@@ -84,13 +81,13 @@ const ActivityRegistrationScreen: React.FC<ActivityRegistrationScreenProps> = ({
 
   const handleSaveActivity = () => {
     if (!formData.name || !formData.date || !leaderSearch) {
-      onShowToast("Đồng chí vui lòng điền đầy đủ các thông tin bắt buộc (*)", "error");
+      alert("Đồng chí vui lòng điền đầy đủ các thông tin bắt buộc (*)");
       return;
     }
     const finalData = { ...formData, leader: leaderSearch };
     if (editingId) {
       onUpdateActivities(prev => prev.map(a => a.id === editingId ? { ...a, ...finalData } as ActivityPlan : a));
-      onShowToast("Cập nhật hoạt động thành công!", "success");
+      alert("Cập nhật hoạt động thành công!");
     } else {
       const newAct: ActivityPlan = {
         ...finalData as any,
@@ -100,7 +97,7 @@ const ActivityRegistrationScreen: React.FC<ActivityRegistrationScreenProps> = ({
         attendees: []
       };
       onUpdateActivities(prev => [newAct, ...prev]);
-      onShowToast("Tạo hoạt động mới thành công!", "success");
+      alert("Tạo hoạt động mới thành công!");
     }
     setIsFormOpen(false);
   };
@@ -115,7 +112,7 @@ const ActivityRegistrationScreen: React.FC<ActivityRegistrationScreenProps> = ({
     const oneDayInMs = 24 * 60 * 60 * 1000;
 
     if (activityTime - now < oneDayInMs && now < activityTime) {
-      onShowToast("Hệ thống đã tự động chốt danh sách (24h trước giờ bắt đầu). Không thể đăng ký hoặc hủy lúc này.", "error");
+      alert("Hệ thống đã tự động chốt danh sách (24h trước giờ bắt đầu). Không thể đăng ký hoặc hủy lúc này.");
       return;
     }
 
@@ -132,7 +129,7 @@ const ActivityRegistrationScreen: React.FC<ActivityRegistrationScreenProps> = ({
       return a;
     }));
     
-    onShowToast(isCurrentlyJoined ? "Đã huỷ đăng ký tham gia thành công." : "Đăng ký tham gia hoạt động thành công!", "success");
+    alert(isCurrentlyJoined ? "Đã huỷ đăng ký tham gia thành công." : "Đăng ký tham gia hoạt động thành công!");
   };
 
   const filteredActivities = useMemo(() => {
