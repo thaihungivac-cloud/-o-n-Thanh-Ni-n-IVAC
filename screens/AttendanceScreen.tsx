@@ -3,18 +3,15 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import jsQR from 'jsqr';
 import { ActivityPlan, Member, BranchName } from '../types';
 
-// Thêm onShowToast vào interface props
 interface AttendanceScreenProps {
   currentUser: Member | null;
   members: Member[];
   activities: ActivityPlan[];
   onUpdateActivities: React.Dispatch<React.SetStateAction<ActivityPlan[]>>;
   onBack: () => void;
-  onShowToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-// Nhận onShowToast từ props
-const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, members, activities, onUpdateActivities, onBack, onShowToast }) => {
+const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, members, activities, onUpdateActivities, onBack }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [scanResult, setScanResult] = useState<{ success: boolean; message: string; subMessage?: string } | null>(null);
@@ -148,8 +145,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, member
         requestRef.current = requestAnimationFrame(scanFrame);
       }
     } catch (err) {
-      // Thay alert bằng onShowToast
-      onShowToast("Không thể truy cập Camera.", "error");
+      alert("Không thể truy cập Camera.");
       setIsScanning(false);
     }
   };
@@ -213,10 +209,9 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({ currentUser, member
   const handleManualConfirm = (member: Member) => {
     const result = handleAttendanceLogic(selectedActivityId, member.id, currentUser?.name || 'Cán bộ');
     if (result.success) {
-      // Thay alert bằng onShowToast
-      onShowToast(`Đã ghi nhận điểm danh thành công cho đồng chí ${member.name}`, "success");
+      alert(`Đã ghi nhận điểm danh thành công cho đồng chí ${member.name}`);
     } else {
-      onShowToast(`Thất bại: ${result.message}`, "error");
+      alert(`Thất bại: ${result.message}`);
     }
   };
 
