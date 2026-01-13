@@ -1,99 +1,224 @@
 
-import React from 'react';
-import { Screen } from '../types';
+import React, { useMemo, useState } from 'react';
+import { Screen, Member, NewsItem, ActivityPlan, Document, SystemNotification } from '../types';
 
 interface HomeScreenProps {
-  onNavigate: (screen: Screen) => void;
+  currentUser: Member | null;
+  members: Member[];
+  news: NewsItem[];
+  activities?: ActivityPlan[];
+  docs?: Document[];
+  settings: { notifEnabled: boolean };
+  systemNotifications: SystemNotification[];
+  onNavigate: (screen: Screen, targetId?: string) => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ currentUser, members, news, activities = [], docs = [], settings, systemNotifications, onNavigate }) => {
+  const [viewingSystemNotif, setViewingSystemNotif] = useState<SystemNotification | null>(null);
+
   const apps = [
-    { screen: Screen.MEMBERS, label: 'Quản lý Đoàn viên', icon: 'groups', color: 'bg-blue-500/20 text-blue-400' },
-    { screen: Screen.NEWS, label: 'Văn bản đi/đến', icon: 'description', color: 'bg-orange-500/20 text-orange-400' },
-    { screen: Screen.ATTENDANCE, label: 'Đăng ký lịch họp', icon: 'calendar_month', color: 'bg-purple-500/20 text-purple-400' },
-    { screen: Screen.ANALYTICS, label: 'Thi đua khen thưởng', icon: 'emoji_events', color: 'bg-yellow-500/20 text-yellow-400' },
-    { screen: Screen.ACTIVITY, label: 'Đóng Đoàn phí', icon: 'payments', color: 'bg-teal-500/20 text-teal-400' },
-    { screen: Screen.AI, label: 'Trợ lý AI', icon: 'auto_awesome', color: 'bg-primary/20 text-primary' },
+    { screen: Screen.MEMBERS, label: 'Quản lý Đoàn viên', icon: 'groups', color: 'bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400' },
+    { screen: Screen.LIBRARY, label: 'Thư viện số', icon: 'auto_stories', color: 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' },
+    { screen: Screen.ACTIVITY_REG, label: 'Đăng ký hoạt động', icon: 'event_available', color: 'bg-orange-500/10 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400' },
+    { screen: Screen.ATTENDANCE, label: 'Điểm danh', icon: 'qr_code_scanner', color: 'bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400' },
+    { screen: Screen.REPORTS, label: 'Báo cáo', icon: 'description', color: 'bg-teal-500/10 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400' },
+    { screen: Screen.ANALYTICS, label: 'Phân tích', icon: 'monitoring', color: 'bg-primary/10 dark:bg-primary/20 text-primary' },
+    { screen: Screen.ACTIVITY, label: 'Sáng kiến', icon: 'lightbulb', color: 'bg-yellow-500/10 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' },
+    { screen: Screen.AI, label: 'Trợ lý AI IVAC', icon: 'auto_awesome', color: 'bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary' },
   ];
 
+  const topFiveNews = useMemo(() => {
+    return [...news]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+  }, [news]);
+
+  const notifications = useMemo(() => {
+    if (!settings.notifEnabled) return [];
+    
+    const list: any[] = [];
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    if (currentUser) {
+      const personalNotifs = systemNotifications.filter(n => n.targetMemberId === currentUser.id);
+      personalNotifs.forEach(pn => {
+        list.push({
+          id: `sys-${pn.id}`,
+          title: pn.title,
+          desc: pn.message,
+          icon: pn.type === 'warning' ? 'error' : pn.type === 'encouragement' ? 'military_tech' : 'assignment_late',
+          color: pn.type === 'warning' ? 'text-rose-500 bg-rose-500/10' : pn.type === 'encouragement' ? 'text-amber-500 bg-amber-500/10' : 'text-blue-500 bg-blue-500/10',
+          action: () => setViewingSystemNotif(pn)
+        });
+      });
+    }
+
+    const activeActs = activities.filter(a => {
+      if (a.date !== todayStr) return false;
+      const endDateTime = new Date(`${a.date}T${a.endTime}`).getTime();
+      return now.getTime() <= endDateTime;
+    });
+    activeActs.forEach(act => {
+      list.push({
+        id: `active-${act.id}`,
+        title: 'Hoạt động đang diễn ra',
+        desc: `"${act.name}" đang mở cổng điểm danh.`,
+        icon: 'qr_code_scanner',
+        color: 'text-purple-600 dark:text-purple-400 bg-purple-500/10 dark:bg-purple-400/10',
+        action: () => onNavigate(Screen.ATTENDANCE)
+      });
+    });
+
+    return list;
+  }, [activities, systemNotifications, currentUser, settings.notifEnabled, onNavigate]);
+
   return (
-    <div className="flex flex-col pb-24">
-      <header className="px-4 py-4 flex items-center justify-between sticky top-0 bg-background-dark/95 backdrop-blur-md z-30">
+    <div className="flex flex-col pb-32 bg-background-light dark:bg-background-dark transition-colors duration-300">
+      <header className="px-6 py-6 flex items-center justify-between sticky top-0 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md z-30">
         <div className="flex items-center gap-3">
-          <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="material-symbols-outlined text-primary">diversity_3</span>
+          <div className="h-10 w-16 bg-white rounded-xl shadow-lg flex items-center justify-center p-1 border border-primary/10">
+            <div className="border-2 border-primary rounded-lg w-full h-full flex items-center justify-center">
+               <span className="text-primary font-black text-[10px]">IVAC</span>
+            </div>
           </div>
-          <h2 className="text-lg font-bold">Đoàn TN IVAC</h2>
+          <div className="flex flex-col">
+            <h2 className="text-sm font-black tracking-tight text-gray-900 dark:text-white uppercase leading-none">CÔNG NGHỆ SỐ IVAC</h2>
+            <span className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-0.5">Số hóa phong trào Đoàn</span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => onNavigate(Screen.AI)} className="p-2 text-gray-400 hover:text-white transition-colors">
+          <button onClick={() => onNavigate(Screen.AI)} className="p-2 text-gray-400 hover:text-primary transition-colors">
             <span className="material-symbols-outlined">smart_toy</span>
           </button>
-          <button onClick={() => onNavigate(Screen.SETTINGS)} className="size-9 rounded-full overflow-hidden border border-white/10">
-            <img src="https://picsum.photos/100/100?random=2" alt="Avatar" />
+          <button 
+            onClick={() => onNavigate(Screen.PROFILE)} 
+            className="size-10 rounded-2xl overflow-hidden border-2 border-primary/20 hover:border-primary transition-all ring-4 ring-primary/5 shadow-sm"
+          >
+            <img src={currentUser?.avatar || "https://picsum.photos/100/100"} alt="Avatar" className="size-full object-cover" />
           </button>
         </div>
       </header>
 
-      <div className="px-4 mt-2">
-        <p className="text-sm text-gray-400">Chào mừng trở lại,</p>
-        <h1 className="text-2xl font-bold mt-0.5">Nguyễn Văn A</h1>
-      </div>
-
-      <div className="p-4">
-        <div className="relative h-56 rounded-2xl overflow-hidden shadow-xl group cursor-pointer" onClick={() => onNavigate(Screen.NEWS)}>
-          <img src="https://picsum.photos/800/400?random=3" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="News" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-          <div className="absolute bottom-0 left-0 p-5 w-full">
-            <span className="px-2 py-1 bg-primary text-[10px] font-bold rounded uppercase mb-2 inline-block">Tin nổi bật</span>
-            <h3 className="text-xl font-bold text-white mb-2">Hoạt động chào mừng 26/3</h3>
-            <p className="text-gray-300 text-xs line-clamp-1">Cập nhật lịch trình sự kiện chào mừng ngày thành lập Đoàn TNCS Hồ Chí Minh.</p>
+      <div className="px-6 mt-4 mb-6">
+        <div className="flex flex-col">
+          <p className="text-sm font-medium text-gray-500 mb-0.5">Chào đồng chí,</p>
+          <h1 className="text-3xl font-black text-gray-900 dark:text-white leading-tight">
+            {currentUser?.name || 'Đoàn viên'}
+          </h1>
+          <div className="flex items-center gap-2 mt-2">
+             <span className="text-[10px] font-black bg-primary/10 dark:bg-primary/20 text-primary px-2 py-0.5 rounded-lg uppercase tracking-wider border border-primary/20">
+               {currentUser?.position}
+             </span>
+             <div className="size-1 rounded-full bg-gray-300 dark:bg-gray-700"></div>
+             <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase">{currentUser?.branch}</span>
           </div>
         </div>
       </div>
 
-      <div className="px-4">
-        <div className="bg-surface-dark border border-white/5 rounded-2xl p-4 flex gap-4 relative overflow-hidden">
-          <div className="absolute top-0 right-0 size-24 bg-primary/10 rounded-full blur-2xl -mr-6 -mt-6"></div>
-          <div className="flex-1 flex flex-col gap-3 relative z-10">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-xl">cake</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Nhắc nhở</span>
-            </div>
-            <div>
-              <p className="text-base font-bold">Sinh nhật hôm nay</p>
-              <p className="text-sm text-gray-400">Trần Thị Bích - Ban Chấp Hành</p>
-            </div>
-            <button className="w-fit px-4 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-2">
-              <span className="material-symbols-outlined text-sm">send</span>
-              Gửi lời chúc
-            </button>
-          </div>
-          <div className="size-20 rounded-xl overflow-hidden border-2 border-white/5 shrink-0">
-             <img src="https://picsum.photos/100/100?random=4" className="w-full h-full object-cover" alt="Birthday" />
-          </div>
-        </div>
-      </div>
-
-      <div className="px-4 mt-8 mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold">Ứng dụng</h2>
-        <button onClick={() => onNavigate(Screen.MEMBERS)} className="text-xs font-medium text-primary">Xem tất cả</button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 px-4">
+      <div className="grid grid-cols-2 gap-4 px-6 mb-10">
         {apps.map((app, idx) => (
           <button
             key={idx}
             onClick={() => onNavigate(app.screen)}
-            className="flex flex-col items-center justify-center gap-3 p-5 rounded-2xl bg-surface-dark border border-white/5 hover:bg-white/10 transition-all text-center group"
+            className="flex flex-col items-start justify-between h-36 p-5 rounded-[2rem] bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 hover:border-primary/20 transition-all group relative overflow-hidden shadow-lg hover:shadow-xl active:scale-[0.98]"
           >
-            <div className={`flex items-center justify-center size-12 rounded-full transition-transform group-hover:scale-110 ${app.color}`}>
+            <div className={`flex items-center justify-center size-12 rounded-2xl transition-transform group-hover:scale-110 shadow-md ${app.color}`}>
               <span className="material-symbols-outlined text-[28px]">{app.icon}</span>
             </div>
-            <span className="text-xs font-medium text-gray-300">{app.label}</span>
+            <div className="flex flex-col items-start">
+               <span className="text-xs font-black text-gray-800 dark:text-white leading-tight z-10 group-hover:text-primary transition-colors">{app.label}</span>
+               <div className="w-4 h-0.5 bg-gray-200 dark:bg-gray-700 mt-2 transition-all group-hover:w-8 group-hover:bg-primary"></div>
+            </div>
           </button>
         ))}
       </div>
+
+      <div className="px-6 mb-12 space-y-4">
+        <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-[0.2em]">Thông báo mới nhất</h2>
+        <div className="space-y-3">
+          {notifications.length > 0 ? (
+            notifications.map((notif) => (
+              <div 
+                key={notif.id} 
+                onClick={notif.action}
+                className="bg-white dark:bg-surface-dark/50 border border-gray-100 dark:border-white/5 rounded-3xl p-5 flex items-center gap-4 group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-all shadow-sm"
+              >
+                <div className={`size-11 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${notif.color}`}>
+                  <span className="material-symbols-outlined text-xl">{notif.icon}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-black text-gray-800 dark:text-white leading-none">{notif.title}</h4>
+                  <p className="text-[11px] text-gray-500 font-medium mt-1.5 leading-relaxed line-clamp-2">{notif.desc}</p>
+                </div>
+                <span className="material-symbols-outlined text-gray-300 dark:text-gray-700 group-hover:text-primary transition-colors">chevron_right</span>
+              </div>
+            ))
+          ) : (
+            <div className="py-10 text-center flex flex-col items-center gap-2 opacity-40">
+               <span className="material-symbols-outlined text-3xl">notifications_off</span>
+               <p className="text-[10px] font-black uppercase tracking-widest italic">Hiện chưa có thông báo mới</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* SYSTEM NOTIFICATION DETAIL MODAL */}
+      {viewingSystemNotif && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+           <div className={`w-full max-w-sm rounded-[3rem] overflow-hidden shadow-2xl border border-white/10 animate-in zoom-in-95 duration-500 flex flex-col ${
+             viewingSystemNotif.type === 'encouragement' ? 'bg-emerald-950/90' :
+             viewingSystemNotif.type === 'warning' ? 'bg-rose-950/90' : 'bg-blue-950/90'
+           }`}>
+              <div className="p-8 pb-4 flex flex-col items-center text-center">
+                 <div className={`size-16 rounded-3xl flex items-center justify-center shadow-xl mb-4 ${
+                   viewingSystemNotif.type === 'encouragement' ? 'bg-emerald-500 text-white' :
+                   viewingSystemNotif.type === 'warning' ? 'bg-rose-500 text-white' : 'bg-blue-500 text-white'
+                 }`}>
+                    <span className="material-symbols-outlined text-3xl">
+                      {viewingSystemNotif.type === 'encouragement' ? 'military_tech' :
+                       viewingSystemNotif.type === 'warning' ? 'warning' : 'info'}
+                    </span>
+                 </div>
+                 <h2 className="text-lg font-black text-white uppercase tracking-tight">{viewingSystemNotif.title}</h2>
+                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                   {new Date(viewingSystemNotif.timestamp).toLocaleDateString('vi-VN')}
+                 </p>
+              </div>
+
+              <div className="px-8 py-6 bg-white/5 mx-6 rounded-[2rem] border border-white/5">
+                 <p className="text-sm font-medium text-gray-200 leading-relaxed text-center italic">
+                   "{viewingSystemNotif.message}"
+                 </p>
+              </div>
+
+              <div className="p-8 pt-4 flex flex-col items-center">
+                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Ban Chấp hành Đoàn</p>
+                 <p className="text-xs font-black text-primary uppercase">{viewingSystemNotif.senderName}</p>
+                 
+                 <div className="w-full flex gap-3 mt-8">
+                    <button 
+                      onClick={() => setViewingSystemNotif(null)}
+                      className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-gray-400 uppercase tracking-widest hover:bg-white/10 transition-all border-white/20 active:bg-primary/20 active:text-primary active:shadow-[0_0_20px_#009454] active:border-primary"
+                    >
+                      Đóng
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const targetScreen = viewingSystemNotif.metadata?.screen || Screen.HOME;
+                        const targetId = viewingSystemNotif.metadata?.targetId;
+                        setViewingSystemNotif(null);
+                        onNavigate(targetScreen, targetId);
+                      }}
+                      className="flex-[2] py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all"
+                    >
+                      Xem chi tiết
+                    </button>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };

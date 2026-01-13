@@ -1,115 +1,107 @@
 
-import React from 'react';
+import React, { useState, useRef, useMemo } from 'react';
+import { Member, YouthPosition, BranchName, ActivityPlan } from '../types';
 
 interface ProfileScreenProps {
+  currentUser: Member | null;
+  members: Member[];
+  activities: ActivityPlan[];
+  onUpdate: (updatedMember: Member) => void;
+  onLogout: () => void;
   onBack: () => void;
+  onShowToast: (msg: string, type: 'success' | 'error') => void;
 }
 
-const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
+const ProfileScreen: React.FC<ProfileScreenProps> = ({ currentUser, members, activities, onUpdate, onLogout, onBack, onShowToast }) => {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editData, setEditData] = useState<Partial<Member>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  if (!currentUser) return null;
+
+  const handleSave = () => {
+    if (!editData.name) {
+      onShowToast("Họ tên không được để trống!", "error");
+      return;
+    }
+    onUpdate({ ...currentUser, ...editData } as Member);
+    setIsEditModalOpen(false);
+    onShowToast("Cập nhật hồ sơ thành công!", "success");
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onUpdate({ ...currentUser, avatar: reader.result as string });
+        onShowToast("Đã cập nhật ảnh đại diện!", "success");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
-    <div className="flex flex-col pb-32">
-      <header className="sticky top-0 z-40 bg-background-dark/95 backdrop-blur-md px-4 py-4 border-b border-white/5 flex items-center justify-between">
-        <button onClick={onBack} className="size-10 flex items-center justify-center rounded-full hover:bg-white/10">
+    <div className="flex flex-col pb-32 bg-background-dark min-h-screen text-white">
+      <header className="sticky top-0 z-40 px-6 py-5 border-b border-white/5 flex items-center justify-between backdrop-blur-md">
+        <button onClick={onBack} className="flex size-10 items-center justify-center rounded-full hover:bg-white/5 transition-all text-white">
           <span className="material-symbols-outlined">arrow_back_ios_new</span>
         </button>
-        <h2 className="text-lg font-bold">Hồ sơ Đoàn viên</h2>
-        <button className="size-10 flex items-center justify-center rounded-full bg-primary/20 text-primary">
-          <span className="material-symbols-outlined">qr_code_2</span>
+        <h2 className="text-lg font-black uppercase tracking-tighter">Hồ sơ cá nhân</h2>
+        <button onClick={() => { if(window.confirm("Đồng chí chắc chắn muốn đăng xuất?")) onLogout(); }} className="size-10 flex items-center justify-center text-rose-500">
+           <span className="material-symbols-outlined">logout</span>
         </button>
       </header>
 
-      <div className="px-6 py-8 flex flex-col items-center">
-        <div className="relative group mb-4">
-          <div className="absolute -inset-1 bg-gradient-to-br from-primary to-emerald-400 rounded-full blur opacity-75 group-hover:opacity-100 transition"></div>
-          <div className="relative size-28 rounded-full border-4 border-background-dark overflow-hidden shadow-xl">
-            <img src="https://picsum.photos/200/200?random=11" className="size-full object-cover" alt="Profile" />
-          </div>
-          <div className="absolute bottom-1 right-1 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-background-dark flex items-center gap-1">
-             <span className="material-symbols-outlined text-[12px]">verified</span>
-             Đoàn viên
+      <div className="px-6 py-10 flex flex-col items-center">
+        <div className="relative group cursor-pointer mb-6" onClick={() => fileInputRef.current?.click()}>
+          <img src={currentUser.avatar || "https://picsum.photos/200/200"} className="size-32 rounded-full object-cover border-4 border-primary shadow-2xl" alt="Profile" />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="material-symbols-outlined">photo_camera</span>
           </div>
         </div>
-        
-        <h1 className="text-2xl font-bold">Nguyễn Văn A</h1>
-        <p className="text-sm text-primary font-medium mt-1">Bí thư Chi đoàn - Khối Văn phòng</p>
-        
-        <div className="flex gap-3 mt-4">
-          <button className="px-5 py-2 bg-primary text-white text-xs font-bold rounded-full shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
-            <span className="material-symbols-outlined text-[16px]">edit</span>
-            Cập nhật
-          </button>
-          <button className="px-5 py-2 bg-white/10 text-white text-xs font-bold rounded-full border border-white/10 hover:bg-white/20 transition-all flex items-center gap-2">
-            <span className="material-symbols-outlined text-[16px]">share</span>
-            Chia sẻ
-          </button>
-        </div>
+        <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+        <h1 className="text-2xl font-black">{currentUser.name}</h1>
+        <p className="text-sm text-primary font-bold uppercase tracking-widest mt-1">{currentUser.position}</p>
       </div>
 
-      <div className="px-4 grid grid-cols-3 gap-3">
-        {[
-          { icon: 'calendar_month', value: '5', label: 'Năm TG', color: 'text-blue-400 bg-blue-400/10' },
-          { icon: 'local_activity', value: '24', label: 'Hoạt động', color: 'text-orange-400 bg-orange-400/10' },
-          { icon: 'stars', value: '92', label: 'Điểm RL', color: 'text-primary bg-primary/10' },
-        ].map((stat, idx) => (
-          <div key={idx} className="bg-surface-dark border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 text-center">
-            <div className={`size-10 rounded-full flex items-center justify-center ${stat.color}`}>
-              <span className="material-symbols-outlined text-lg">{stat.icon}</span>
-            </div>
-            <p className="text-xl font-bold leading-none">{stat.value}</p>
-            <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">{stat.label}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="px-4 mt-8 space-y-4">
-        <h3 className="font-bold px-1">Điểm rèn luyện</h3>
-        <div className="bg-[#1a382d] rounded-2xl p-6 relative overflow-hidden shadow-xl border border-white/5">
-           <div className="flex justify-between items-end mb-6">
-              <div>
-                <p className="text-white/60 text-xs">Năm 2023</p>
-                <h4 className="text-2xl font-bold text-white mt-1">88<span className="text-sm text-white/40 font-normal">/100</span></h4>
-              </div>
-              <div className="bg-primary/20 backdrop-blur-sm px-3 py-1 rounded-full border border-primary/20 flex items-center gap-1">
-                <span className="material-symbols-outlined text-green-400 text-sm">trending_up</span>
-                <span className="text-green-400 text-xs font-bold">+5%</span>
-              </div>
+      <div className="px-6 space-y-4">
+        <div className="bg-surface-dark/30 border border-white/5 rounded-[2.5rem] p-6 space-y-4 shadow-xl">
+           <div className="flex flex-col gap-1">
+              <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Gmail cá nhân</p>
+              <p className="font-bold text-sm">{currentUser.email}</p>
            </div>
-           {/* Mock Chart SVG */}
-           <div className="w-full h-24 mt-4">
-              <svg className="w-full h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
-                <path d="M0,80 C50,70 100,85 150,50 C200,30 250,45 300,10" fill="none" stroke="#009454" strokeWidth="4" strokeLinecap="round" />
-                <path d="M0,80 C50,70 100,85 150,50 C200,30 250,45 300,10 L300,100 L0,100 Z" fill="url(#grad)" opacity="0.2" />
-                <defs>
-                  <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#009454" />
-                    <stop offset="100%" stopColor="#0f231a" />
-                  </linearGradient>
-                </defs>
-              </svg>
+           <div className="flex flex-col gap-1 border-t border-white/5 pt-4">
+              <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Đơn vị</p>
+              <p className="font-bold text-sm">{currentUser.branch}</p>
            </div>
         </div>
-      </div>
-
-      <div className="px-4 mt-8 space-y-4">
-        <h3 className="font-bold px-1">Thông tin cá nhân</h3>
-        <div className="bg-surface-dark rounded-2xl p-2 border border-white/5">
-           {[
-             { icon: 'cake', label: 'Ngày sinh', value: '01/01/1995' },
-             { icon: 'group_add', label: 'Ngày vào Đoàn', value: '26/03/2010' },
-             { icon: 'badge', label: 'Chức vụ', value: 'Bí thư Chi đoàn' },
-           ].map((info, idx) => (
-             <div key={idx} className={`flex items-center gap-4 p-4 ${idx !== 2 ? 'border-b border-white/5' : ''}`}>
-               <div className="size-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400">
-                 <span className="material-symbols-outlined text-xl">{info.icon}</span>
-               </div>
-               <div>
-                 <p className="text-[10px] uppercase font-bold text-gray-500">{info.label}</p>
-                 <p className="text-sm font-semibold">{info.value}</p>
-               </div>
-             </div>
-           ))}
+        
+        <div className="flex flex-col gap-3">
+          <button onClick={() => { setEditData(currentUser); setIsEditModalOpen(true); }} className="w-full py-5 bg-primary text-white rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl shadow-primary/20 active:scale-95 transition-all">
+            Chỉnh sửa thông tin
+          </button>
+          <button onClick={() => { if(window.confirm("Đăng xuất ngay bây giờ?")) onLogout(); }} className="w-full py-5 bg-white/5 border border-white/10 rounded-[2rem] font-black uppercase text-xs tracking-widest text-gray-400">
+            Đăng xuất
+          </button>
         </div>
       </div>
+
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+           <div className="bg-surface-dark w-full max-w-lg rounded-[3rem] p-8 space-y-4 border border-white/10 shadow-2xl">
+              <h2 className="text-xl font-black uppercase text-center">Cập nhật hồ sơ</h2>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Họ và tên</label>
+                <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="w-full bg-background-dark border border-white/10 rounded-2xl px-5 py-4 text-sm outline-none focus:border-primary" placeholder="Nhập họ tên..." />
+              </div>
+              <div className="flex gap-4 pt-4">
+                 <button onClick={() => setIsEditModalOpen(false)} className="flex-1 py-4 text-gray-500 font-black uppercase text-xs">Hủy</button>
+                 <button onClick={handleSave} className="flex-[2] py-4 bg-primary text-white rounded-2xl font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Lưu hồ sơ</button>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };

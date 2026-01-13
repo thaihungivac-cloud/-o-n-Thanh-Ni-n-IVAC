@@ -1,11 +1,46 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { Member } from '../types';
 
 interface LoginScreenProps {
-  onLogin: () => void;
+  onLogin: (user: Member) => void;
+  members: Member[];
+  onShowToast: (msg: string, type: 'success' | 'error') => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, members, onShowToast }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    setTimeout(() => {
+      const foundUser = members.find(m => m.email.toLowerCase() === email.toLowerCase());
+      
+      if (foundUser) {
+        if (password.length >= 6) {
+          onLogin(foundUser);
+          onShowToast("Đăng nhập thành công!", "success");
+        } else {
+          const msg = 'Mật khẩu phải có ít nhất 6 ký tự.';
+          setError(msg);
+          onShowToast(msg, "error");
+          setLoading(false);
+        }
+      } else {
+        const msg = 'Gmail này chưa được đăng ký trong hệ thống.';
+        setError(msg);
+        onShowToast(msg, "error");
+        setLoading(false);
+      }
+    }, 1000);
+  };
+
   return (
     <div className="relative flex flex-col h-screen w-full bg-background-dark font-display overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-20">
@@ -13,54 +48,85 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
         <div className="absolute top-[30%] -left-[10%] w-[60%] h-[40%] rounded-full bg-blue-500/20 blur-[60px]"></div>
       </div>
 
-      <div className="relative z-10 flex flex-col flex-grow px-6 pb-8 pt-24">
-        <div className="flex flex-col items-center justify-center flex-grow-[2] gap-8">
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 bg-white rounded-xl shadow-lg flex items-center justify-center p-2">
-              <span className="text-primary font-black text-2xl italic">IVAC</span>
-            </div>
-            <div className="h-10 w-[1px] bg-white/20"></div>
-            <div className="w-20 h-20 bg-white rounded-xl shadow-lg flex items-center justify-center p-2 overflow-hidden">
-               <img src="https://upload.wikimedia.org/wikipedia/vi/1/1a/Huy_hi%E1%BB%87u_%C4%90o%C3%A0n_TNCS_H%E1%BB%93_Ch%C3%AD_Minh.svg" className="w-full" alt="Youth Union" />
-            </div>
+      <div className="relative z-10 flex flex-col flex-grow px-8 pt-20">
+        <div className="flex flex-col items-center mb-12">
+          <div className="w-32 h-32 bg-white rounded-full shadow-2xl flex items-center justify-center p-2 mb-6 border-4 border-primary/20 transform hover:scale-105 transition-transform">
+             <div className="flex flex-col items-center justify-center border-4 border-primary rounded-full w-full h-full">
+                <span className="text-primary font-black text-2xl leading-none">IVAC</span>
+             </div>
           </div>
-          
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight text-white">Đoàn TN IVAC</h1>
-            <p className="text-gray-400 text-base max-w-[280px] mx-auto leading-relaxed">
-              Hệ thống quản lý đoàn viên<br/>hiệu quả, chuyên nghiệp.
-            </p>
+          <h1 className="text-2xl font-black text-white uppercase tracking-tight text-center">CÔNG NGHỆ SỐ IVAC</h1>
+          <p className="text-gray-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-2">Đoàn Thanh Niên</p>
+        </div>
+
+        <div className="bg-surface-dark/50 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-8 shadow-2xl">
+          <div className="flex flex-col items-center mb-8">
+            <h2 className="text-xl font-bold text-white">Đăng nhập</h2>
+            <p className="text-gray-400 text-sm mt-1">Sử dụng tài khoản Google của bạn</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Gmail cá nhân</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-500 text-xl">mail</span>
+                <input 
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-background-dark/50 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm text-white focus:border-primary outline-none transition-all"
+                  placeholder="vidu@gmail.com"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Mật khẩu</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-500 text-xl">lock</span>
+                <input 
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-background-dark/50 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm text-white focus:border-primary outline-none transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-center gap-3">
+                <span className="material-symbols-outlined text-red-500 text-sm">warning</span>
+                <p className="text-[11px] text-red-400 font-bold">{error}</p>
+              </div>
+            )}
+
+            <button 
+              type="submit"
+              disabled={loading}
+              className={`w-full py-4 rounded-2xl bg-primary text-white font-black text-sm uppercase tracking-widest shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2 ${loading ? 'opacity-70 scale-95' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
+            >
+              {loading ? (
+                <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <>Tiếp theo <span className="material-symbols-outlined">arrow_forward</span></>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-8 pt-8 border-t border-white/5 flex flex-col gap-4">
+            <button className="text-xs font-bold text-gray-500 hover:text-primary transition-colors">Quên mật khẩu?</button>
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-xs text-gray-500 font-medium">Bạn chưa có tài khoản?</p>
+              <button className="text-xs font-bold text-primary">Đăng ký ngay</button>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col justify-center w-full gap-4 mb-12">
-          <div className="text-center mb-2">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-medium text-primary">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-              </span>
-              Sẵn sàng đăng nhập
-            </span>
-          </div>
-          
-          <button 
-            onClick={onLogin}
-            className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-6 py-4 text-slate-700 shadow-md hover:bg-slate-50 transition-all active:scale-[0.98]"
-          >
-            <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
-            <span className="text-base font-semibold">Đăng nhập bằng Google</span>
-          </button>
-          
-          <button className="text-sm font-medium text-gray-500 hover:text-white transition-colors">
-            Cần trợ giúp?
-          </button>
-        </div>
-
-        <div className="mt-auto flex flex-col items-center gap-2 pb-6">
-          <div className="h-px w-12 bg-white/10 mb-2"></div>
-          <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">IVAC YOUTH UNION APP</p>
-          <p className="text-xs text-gray-600">Phiên bản 1.0.0</p>
+        <div className="mt-auto pb-8 flex flex-col items-center gap-2">
+          <p className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Hệ thống số hóa IVAC</p>
         </div>
       </div>
     </div>

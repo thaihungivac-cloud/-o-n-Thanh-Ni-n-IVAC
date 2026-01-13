@@ -1,5 +1,5 @@
 {
-  "name": "ivac-youth-union-manager",
+  "name": "công-nghệ-số-ivac",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,6 +12,7 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "recharts": "^3.6.0",
+    "jsqr": "^1.4.0",
     "@google/genai": "^1.34.0"
   },
   "devDependencies": {

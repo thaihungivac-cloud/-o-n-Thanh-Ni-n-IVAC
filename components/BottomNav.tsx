@@ -10,10 +10,10 @@ interface BottomNavProps {
 const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate }) => {
   const navItems = [
     { screen: Screen.HOME, label: 'Trang chủ', icon: 'home' },
+    { screen: Screen.ACTIVITY_REG, label: 'Hoạt động', icon: 'calendar_month' },
+    { screen: Screen.ATTENDANCE, label: 'Điểm danh', icon: 'qr_code_scanner', isCenter: true },
     { screen: Screen.NEWS, label: 'Tin tức', icon: 'newspaper' },
-    { screen: Screen.ATTENDANCE, label: 'QR', icon: 'qr_code_scanner', isCenter: true },
-    { screen: Screen.ANALYTICS, label: 'Phân tích', icon: 'analytics' },
-    { screen: Screen.PROFILE, label: 'Cá nhân', icon: 'person' },
+    { screen: Screen.SETTINGS, label: 'Cá nhân', icon: 'person' },
   ];
 
   return (

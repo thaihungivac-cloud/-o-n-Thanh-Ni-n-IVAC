@@ -1,112 +1,106 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { Member, Screen, MemberRole } from '../types';
 
 interface SettingsScreenProps {
+  currentUser: Member | null;
+  members: Member[];
+  settings: { aiEnabled: boolean; notifEnabled: boolean; darkMode: boolean; };
+  onUpdateSettings: React.Dispatch<React.SetStateAction<{ aiEnabled: boolean; notifEnabled: boolean; darkMode: boolean; }>>;
   onBack: () => void;
   onLogout: () => void;
+  onNavigate: (screen: Screen) => void;
+  onUpdateMember: (updatedMember: Member) => void;
+  onShowToast: (msg: string, type: 'success' | 'error') => void;
 }
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onLogout }) => {
-  const sections = [
-    {
-      title: 'Tài khoản',
-      items: [
-        { label: 'Hồ sơ người dùng', desc: 'Cập nhật thông tin cá nhân', icon: 'person', color: 'bg-blue-500/10 text-blue-400' },
-        { label: 'Đổi mật khẩu', desc: '', icon: 'lock_reset', color: 'bg-emerald-500/10 text-emerald-400' },
-      ]
-    },
-    {
-      title: 'Quản trị hệ thống',
-      isAdmin: true,
-      items: [
-        { label: 'Quản lý phân quyền', desc: 'Phân công vai trò cán bộ', icon: 'admin_panel_settings', color: 'bg-orange-500/10 text-orange-400' },
-        { label: 'Nhật ký hệ thống', desc: '3 Mới', icon: 'history', color: 'bg-purple-500/10 text-purple-400', badge: '3 Mới' },
-        { label: 'Cấu hình AI', desc: 'Tùy chỉnh gợi ý thông minh', icon: 'auto_awesome', color: 'bg-primary/10 text-primary', toggle: true },
-      ]
-    },
-    {
-      title: 'Chung',
-      items: [
-        { label: 'Thông báo đẩy', desc: '', icon: 'notifications', color: 'bg-rose-500/10 text-rose-400', toggle: true },
-        { label: 'Giao diện tối', desc: '', icon: 'dark_mode', color: 'bg-slate-500/10 text-slate-400', toggle: true },
-      ]
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ 
+  currentUser, 
+  members, 
+  settings, 
+  onUpdateSettings, 
+  onBack, 
+  onLogout, 
+  onNavigate, 
+  onUpdateMember,
+  onShowToast
+}) => {
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ old: '', new: '', confirm: '' });
+
+  const handleChangePassword = () => {
+    if (!passwordForm.old || !passwordForm.new || !passwordForm.confirm) {
+      onShowToast("Vui lòng nhập đủ các trường!", "error");
+      return;
     }
-  ];
+    if (passwordForm.new !== passwordForm.confirm) {
+      onShowToast("Mật khẩu mới không khớp!", "error");
+      return;
+    }
+    onShowToast("Đổi mật khẩu thành công!", "success");
+    setIsPasswordModalOpen(false);
+  };
+
+  const handleLogoutClick = () => {
+    if (window.confirm("Đồng chí có chắc muốn đăng xuất?")) {
+      onLogout();
+    }
+  };
 
   return (
-    <div className="flex flex-col pb-12">
-      <header className="sticky top-0 z-50 flex items-center justify-between bg-background-dark/95 backdrop-blur-md px-4 py-4 border-b border-white/5">
-        <button onClick={onBack} className="size-10 flex items-center justify-center rounded-full hover:bg-white/10">
-          <span className="material-symbols-outlined">arrow_back</span>
+    <div className="flex flex-col min-h-screen bg-background-light dark:bg-background-dark pb-32 transition-colors duration-300">
+      <header className="sticky top-0 z-50 flex items-center justify-between bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md px-6 py-5 border-b border-gray-200 dark:border-white/5 transition-colors duration-300">
+        <button onClick={onBack} className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-all text-gray-800 dark:text-white">
+          <span className="material-symbols-outlined text-xl">arrow_back</span>
         </button>
-        <h2 className="text-lg font-bold">Cài đặt</h2>
+        <h2 className="text-lg font-black text-gray-900 dark:text-white">Cài đặt</h2>
         <div className="size-10"></div>
       </header>
 
-      <div className="p-4">
-        <div className="bg-surface-dark rounded-2xl p-5 border border-white/5 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <img src="https://picsum.photos/100/100?random=15" className="size-20 rounded-full border-4 border-primary/20" alt="Avatar" />
-              <div className="absolute bottom-0 right-0 bg-primary border-2 border-surface-dark rounded-full size-6 flex items-center justify-center">
-                <span className="material-symbols-outlined text-white text-[14px]">verified_user</span>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-xl font-bold leading-none">Nguyễn Văn A</h3>
-              <div className="mt-2 flex gap-2">
-                 <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded uppercase">Quản trị viên</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Chi Đoàn Kỹ Thuật</p>
-            </div>
+      <div className="px-6 py-6">
+        <div onClick={() => onNavigate(Screen.PROFILE)} className="bg-white dark:bg-surface-dark/40 border border-gray-100 dark:border-white/5 rounded-[2.5rem] p-6 flex items-center gap-5 shadow-lg cursor-pointer transition-all active:scale-[0.98]">
+          <img src={currentUser?.avatar} className="size-16 rounded-full object-cover border-2 border-primary/20" alt="Avatar" />
+          <div className="flex-1 min-w-0">
+            <h3 className="text-xl font-black text-gray-900 dark:text-white truncate">{currentUser?.name}</h3>
+            <p className="text-xs text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">{currentUser?.position}</p>
           </div>
+          <span className="material-symbols-outlined text-gray-300">chevron_right</span>
         </div>
       </div>
 
-      <div className="space-y-6">
-        {sections.map((section, sIdx) => (
-          <div key={sIdx}>
-            <div className="px-6 pb-2 flex items-center justify-between">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{section.title}</h3>
-              {section.isAdmin && <span className="bg-primary text-white text-[8px] font-bold px-1.5 py-0.5 rounded">ADMIN</span>}
-            </div>
-            <div className="mx-4 bg-surface-dark rounded-2xl overflow-hidden border border-white/5 divide-y divide-white/5">
-              {section.items.map((item, iIdx) => (
-                <div key={iIdx} className="flex items-center gap-4 px-4 py-4 hover:bg-white/5 transition-colors cursor-pointer group">
-                  <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 ${item.color}`}>
-                    <span className="material-symbols-outlined">{item.icon}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold truncate">{item.label}</p>
-                      {item.badge && <span className="bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full">{item.badge}</span>}
-                    </div>
-                    {item.desc && <p className="text-[10px] text-gray-500 truncate">{item.desc}</p>}
-                  </div>
-                  {item.toggle ? (
-                    <div className="w-10 h-6 bg-primary rounded-full relative shadow-inner">
-                      <div className="absolute right-0.5 top-0.5 size-5 bg-white rounded-full"></div>
-                    </div>
-                  ) : (
-                    <span className="material-symbols-outlined text-gray-600 group-hover:text-primary transition-colors">chevron_right</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+      <div className="px-6 space-y-4">
+          <button onClick={() => setIsPasswordModalOpen(true)} className="w-full flex items-center gap-5 px-6 py-5 bg-white dark:bg-surface-dark rounded-[2rem] border border-gray-100 dark:border-white/5 text-left font-black uppercase text-xs transition-all active:scale-[0.98] shadow-sm">
+             <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined text-xl">lock</span>
+             </div>
+             <span className="flex-1 dark:text-white">Đổi mật khẩu</span>
+             <span className="material-symbols-outlined text-gray-300">chevron_right</span>
+          </button>
+          
+          <button onClick={handleLogoutClick} className="w-full flex items-center gap-5 px-6 py-5 bg-rose-500/5 dark:bg-rose-500/10 rounded-[2rem] border border-rose-500/20 text-rose-500 text-left font-black uppercase text-xs transition-all active:scale-[0.98] shadow-sm">
+             <div className="size-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500">
+                <span className="material-symbols-outlined text-xl">logout</span>
+             </div>
+             <span className="flex-1">Đăng xuất hệ thống</span>
+          </button>
       </div>
 
-      <div className="px-4 mt-12 pb-12">
-        <button 
-          onClick={onLogout}
-          className="w-full flex items-center justify-center gap-2 bg-surface-dark border border-red-500/30 p-4 rounded-2xl hover:bg-red-500/10 text-red-500 font-bold active:scale-[0.98] transition-all"
-        >
-          <span className="material-symbols-outlined">logout</span>
-          Đăng xuất
-        </button>
-        <p className="text-center text-[10px] text-gray-700 mt-4">Phiên bản 2.4.0 (Build 2024)</p>
-      </div>
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
+           <div className="bg-white dark:bg-surface-dark w-full max-w-lg rounded-[3rem] p-8 space-y-4 border border-white/10 shadow-2xl">
+              <h2 className="text-xl font-black uppercase dark:text-white text-center">Đổi mật khẩu</h2>
+              <div className="space-y-3">
+                <input type="password" value={passwordForm.old} onChange={e => setPasswordForm({...passwordForm, old: e.target.value})} className="w-full bg-gray-100 dark:bg-background-dark border-none rounded-2xl px-5 py-4 dark:text-white" placeholder="Mật khẩu hiện tại" />
+                <input type="password" value={passwordForm.new} onChange={e => setPasswordForm({...passwordForm, new: e.target.value})} className="w-full bg-gray-100 dark:bg-background-dark border-none rounded-2xl px-5 py-4 dark:text-white" placeholder="Mật khẩu mới" />
+                <input type="password" value={passwordForm.confirm} onChange={e => setPasswordForm({...passwordForm, confirm: e.target.value})} className="w-full bg-gray-100 dark:bg-background-dark border-none rounded-2xl px-5 py-4 dark:text-white" placeholder="Xác nhận mật khẩu mới" />
+              </div>
+              <div className="flex gap-4 pt-4">
+                 <button onClick={() => setIsPasswordModalOpen(false)} className="flex-1 py-4 font-black uppercase text-xs text-gray-500 tracking-widest">Hủy bỏ</button>
+                 <button onClick={handleChangePassword} className="flex-[2] py-4 bg-primary text-white rounded-2xl font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Xác nhận</button>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };

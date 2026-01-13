@@ -21,17 +21,17 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onNext }) => {
             className="w-full h-full object-cover"
           />
           <div className="absolute bottom-6 left-6 z-20 bg-white/10 backdrop-blur-md border border-white/20 p-3 rounded-2xl">
-            <span className="material-symbols-outlined text-white text-3xl">groups</span>
+            <span className="material-symbols-outlined text-white text-3xl">terminal</span>
           </div>
         </div>
         
         <div className="text-center max-w-xs space-y-4">
           <h1 className="text-3xl font-extrabold tracking-tight text-white leading-tight">
-            Đoàn TN IVAC <br/>
-            <span className="text-primary">Kết nối & Quản lý</span>
+            CÔNG NGHỆ SỐ <br/>
+            <span className="text-primary text-4xl">IVAC</span>
           </h1>
           <p className="text-base text-gray-400 leading-relaxed">
-            Nền tảng di động giúp quản lý công tác Đoàn hiệu quả, nhanh chóng và minh bạch cho mọi đoàn viên.
+            Nâng tầm công tác Đoàn bằng ứng dụng số hóa hiện đại, chuyên nghiệp và hiệu quả.
           </p>
         </div>
       </div>
@@ -47,8 +47,8 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onNext }) => {
           onClick={onNext}
           className="w-full h-14 flex items-center justify-center rounded-xl bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary-hover active:scale-95 transition-all font-bold text-lg gap-2"
         >
-          Bắt đầu
-          <span className="material-symbols-outlined">arrow_forward</span>
+          Trải nghiệm ngay
+          <span className="material-symbols-outlined">rocket_launch</span>
         </button>
       </div>
     </div>
