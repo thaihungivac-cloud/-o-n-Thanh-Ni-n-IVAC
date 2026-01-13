@@ -3,18 +3,15 @@ import React, { useState, useMemo } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from 'recharts';
 import { Member, ActivityPlan, BranchName, SystemNotification } from '../types';
 
-// Thêm onShowToast vào interface props
 interface AnalyticsScreenProps {
   onBack: () => void;
   members: Member[];
   activities: ActivityPlan[];
   currentUser: Member | null;
   onSendNotification: (notif: Omit<SystemNotification, 'id' | 'timestamp' | 'isRead'>) => void;
-  onShowToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-// Nhận onShowToast từ props
-const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack, members, activities, currentUser, onSendNotification, onShowToast }) => {
+const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack, members, activities, currentUser, onSendNotification }) => {
   const [selectedBranch, setSelectedBranch] = useState<string>('TẤT CẢ');
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
@@ -127,8 +124,7 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onBack, members, acti
       message,
       type
     });
-    // Thay alert bằng onShowToast
-    onShowToast(`Đã gửi thông báo ${title.toLowerCase()} tới đồng chí ${targetName}!`, "success");
+    alert(`Đã gửi thông báo ${title.toLowerCase()} tới đồng chí ${targetName}!`);
   };
 
   return (
